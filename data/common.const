@@ -1,0 +1,362 @@
+[Constants]
+
+; ---------------------------------------------
+; OPEN MORTAL KOMBAT
+; ---------------------------------------------
+
+OpenMK.Enable.Char = 0
+;Enables Mortal Kombat functionality for current char. If not declared, character will behave like common Mugen/Ikemen (and ignore most of OpenMK-specific constants and/or maps).
+; Will probably be deprecated?
+
+; ---------------------------------------------
+; Character behavior
+OpenMK.Char.DisableRun = 0
+; 1 = Disables Run mechanic from Mortal Kombat 3. When 0 or not declared, it will be enabled.
+
+OpenMK.Char.Kombos = 0
+;1 = Enables Dial-A-Kombos like MK3/UMK3, 2 = Enables MK4-like global combos. When 0 or not declared, character can't do button combos, instead it will only do a close hit, like MK1/MK2.
+
+OpenMK.Char.RoundhouseKick = 0
+;1 = Roundhouse Kicks works like MK1, 2 = Roundhouse has MK2 physics (camera doesn't shake by hit), 3 = Roundhouse has MK3 physics (camera shakes upon hit). When 0 or not declared, Roundhouse Kick behaves like MK3.
+
+OpenMK.Char.Stumble = 0
+;1 = Character will stumble after being hit with punches various times (like MK1). If not declared, character will just be pushed back like MK2 onwards.
+
+OpenMK.Char.SweepFix = 0
+; 1 = It will patch the infinite sweep problem. When 0 or not declared, the infinite is kept.
+
+OpenMK.Char.CrouchAttacks = 0
+; 1 = Crouch attacks will work like MK1. 2 = Crouch LP and LK will be added as in MK2. When 0 or not declared, it will behave like MK3.
+
+; ---------------------------------------------
+; Others
+OpenMK.Aggressor.Enabled = 0
+;Enables/Disables the use of aggressor on this character
+
+OpenMK.TagBonesExplosion = 0
+;If declared, character will explode when being defeated in tag mode
+
+; ---------------------------------------------
+; COMMON CONSTANTS
+; ---------------------------------------------
+
+; Negative state global code toggle
+Default.Enable.Action = 1
+Default.Enable.Dizzy = 1
+Default.Enable.GuardBreak = 1
+Default.Enable.Score = 1
+Default.Enable.Tag = 1
+
+; Rules
+Default.Attack.LifeToPowerMul = 0.7 ; multiplier for power the attacker gets when an attack successfully hits (overridden by getpower HitDef option)
+Default.GetHit.LifeToPowerMul = 0.6 ; multiplier for power the receiver gets when an attack successfully hits (overridden by givepower HitDef option)
+Super.TargetDefenceMul = 1.5        ; multiplier for how much damage a super does when you combo into it (ignored if SuperPause p2defmul option is set)
+Default.LifeToGuardPointsMul = -1.5 ; multiplier for guard points the receiver gets when an attack is blocked (overridden by guardpoints HitDef option)
+Default.LifeToDizzyPointsMul = 0    ; multiplier for dizzy points the receiver gets when an attack successfully hits (overridden by dizzypoints HitDef option)
+Default.LifeToRedLifeMul = 0.25     ; multiplier for red life the receiver gets when an attack successfully hits (overridden by redlife HitDef option)
+Default.IgnoreDefeatedEnemies = 1   ; prevents EnemyNear from redirecting defeated enemies (toggle)
+Input.PauseOnHitPause = 1           ; controls if inputs should be retained during hit pause
+
+; tag.zss options
+TagInTime = 20                 ; tag-in total switch time
+TagInVelX = 12.5               ; tag-in max Vel X
+TagCommandAIChance = 50        ; affects default AI switching probability (range 0-100)
+TagCounterSwitchPower = 1000   ; counter switch power cost (used in MvCI ver only)
+TagRedLifeRegenFrames = 30     ; red life regeneration interval (in frames)
+TagRedLifeRegenPercent = 0.005 ; red life regenerated each interval (percentage of max life)
+TagSwitchCooldown = 0          ; number of ticks the tag switch cooldown lasts
+
+; Character Reserved Action Numbers
+AnimStanding = 0
+AnimStandTurning = 5
+AnimCrouchTurning = 6
+AnimStandToCrouch = 10
+AnimCrouching = 11
+AnimCrouchToStand = 12
+AnimWalkingForwards = 20
+AnimWalkingBackwards = 21
+AnimJumpStart_onGround = 40
+AnimJumpNeutral_upwards = 41
+AnimJumpForwards_upwards = 42
+AnimJumpBack_upwards = 43
+AnimJumpNeutral_downwards = 44 ;opt
+AnimJumpFwd_downwards = 45 ;opt
+AnimJumpBack_downwards = 46 ;opt
+AnimJumpLanding = 47
+AnimRunFwdOrHopForward = 100
+AnimHopBack = 105
+AnimRunUp = 110 ;deprecated
+AnimRunDown = 115 ;deprecated
+AnimStartGuarding_stand = 120
+AnimStartGuarding_crouch = 121
+AnimStartGuarding_air = 122
+AnimGuard_stand = 130
+AnimGuard_crouch = 131
+AnimGuard_air = 132
+AnimStopGuarding_stand = 140
+AnimStopGuarding_crouch = 141
+AnimStopGuarding_air = 142
+AnimGuardingAHit_stand = 150
+AnimGuardingAHit_crouch = 151
+AnimGuardingAHit_air = 152
+AnimLose = 170 ;opt
+AnimTimeOverDrawGame = 175 ;opt
+AnimWin = 180 ;opt
+AnimIntro = 190 ;opt
+AnimTaunt = 195 ;opt
+AnimStandOrAirHitHigh_light = 5000
+AnimStandOrAirHitHigh_medium = 5001
+AnimStandOrAirHitHigh_hard = 5002
+AnimStandRecoverHigh_light = 5005
+AnimStandRecoverHigh_medium = 5006
+AnimStandRecoverHigh_hard = 5007
+AnimStandOrAirHitLow_light = 5010
+AnimStandOrAirHitLow_medium = 5011
+AnimStandOrAirHitLow_hard = 5012
+AnimStandRecoverLow_light = 5015
+AnimStandRecoverLow_medium = 5016
+AnimStandRecoverLow_hard = 5017
+AnimCrouchHit_light = 5020
+AnimCrouchHit_medium = 5021
+AnimCrouchHit_hard = 5022
+AnimCrouchRecover_light = 5025
+AnimCrouchRecover_medium = 5026
+AnimCrouchRecover_hard = 5027
+AnimStandOrAirHitBack = 5030
+AnimStandOrAirHitTransition = 5035 ;opt
+AnimAirRecover = 5040
+AnimAirFall = 5050
+AnimAirFall_hitUp = 5051 ;opt
+AnimAirFall_hitUpDiagonal = 5052 ;opt
+AnimAirFall_comingDown = 5060 ;opt
+AnimAirFall_comingDown_hitUp = 5061 ;opt
+AnimAirFall_comingDown_hitUpDiagonal = 5062 ;opt
+AnimTripped = 5070
+AnimLieDownHit_stayDown = 5080
+AnimLieDownHit_stayDown_hitUp = 5081 ;opt
+AnimLieDownHit_stayDown_hitUpDiagonal = 5082 ;opt
+AnimLieDownHit_hitUpIntoAir = 5090
+AnimHittingGroundFromFall = 5100
+AnimBounceFromGroundIntoAir_hitUp = 5101 ;opt
+AnimBounceFromGroundIntoAir_hitUpDiagonal = 5102 ;opt
+AnimBounceIntoAir = 5160
+AnimBounceIntoAir_hitUp = 5161 ;opt
+AnimBounceIntoAir_hitUpDiagonal = 5162 ;opt
+AnimHitGroundFromBounce = 5170
+AnimHitGroundFromBounce_hitUp = 5171 ;opt
+AnimHitGroundFromBounce_hitUpDiagonal = 5172 ;opt
+AnimLieDown = 5110
+AnimLieDown_hitUp = 5111 ;opt
+AnimLieDown_hitUpDiagonal = 5112 ;opt
+AnimGetUpFromLieDown = 5120
+AnimGetUpFromLieDown_hitUp = 5121 ;opt
+AnimGetUpFromLieDown_hitUpDiagonal = 5122 ;opt
+AnimLieDead_firstRounds = 5140 ;opt
+AnimLieDead_finalRound = 5150 ;opt
+AnimLieDead_firstRounds_hitUp = 5151 ;opt
+AnimLieDead_firstRounds_hitUpDiagonal = 5152 ;opt
+AnimLieDead_finalRound_hitUp = 5156 ;opt
+AnimLieDead_finalRound_hitUpDiagonal = 5157 ;opt
+AnimFallRecoveryNearGround = 5200
+AnimFallRecoveryInMidAir = 5210
+AnimDizzy = 5300
+AnimContinueScreen = 5500 ;opt
+AnimYesToContinue = 5510 ;opt
+AnimNoToContinue = 5520 ;opt
+
+; tag.zss anims
+AnimTagEnteringScreen = 100
+AnimTagLeavingScreen = 100
+AnimTagJumpingIn = 42
+AnimTagLanding = 47
+
+; common1.cns / common1.cns.zss states
+StateStand = 0
+StateStandToCrouch = 10
+StateCrouching = 11
+StateCrouchToStand = 12
+StateWalk = 20
+StateJumpStart = 40
+StateAirJumpStart = 45
+StateJumpUp = 50
+StateJumpDown = 51
+StateJumpLand = 52
+StateRunForward = 100
+StateHopBackwards = 105
+StateHopBackwards_land = 106
+StateRunUp = 110 ;deprecated
+StateRunDown = 115 ;deprecated
+StateGuard_start = 120
+StateStandGuard_guarding = 130
+StateCrouchGuard_guarding = 131
+StateAirGuard_guarding = 132
+StateGuard_end = 140
+StateStandGuardHit_shaking = 150
+StateStandGuardHit_knockedBack = 151
+StateCrouchGuardHit_shaking = 152
+StateCrouchGuardHit_knockedBack = 153
+StateAirGuardHit_shaking = 154
+StateAirGuardHit_knockedAway = 155
+StateLose_timeOver = 170
+StateDrawGame_timeOver = 175
+StatePreIntro = 190
+StateIntro = 191
+StateStandGetHit_shaking = 5000
+StateStandGetHit_knockedBack = 5001
+StateCrouchGetHit_shaking = 5010
+StateCrouchGetHit_knockedBack = 5011
+StateAirGetHit_shaking = 5020
+StateAirGetHit_knockedAway = 5030
+StateAirGetHit_transition = 5035
+StateAirGetHit_recoveringInAirNotFalling = 5040
+StateAirGetHit_falling = 5050
+StateTrippedGetHit_shaking = 5070
+StateTrippedGetHit_knockedAway = 5071
+StateDownedGetHit_shaking = 5080
+StateDownedGetHit_knockedBack = 5081
+StateDownedGetHit_hitGroundFromFall = 5100
+StateDownedGetHit_bounceOffGround = 5101
+StateDownedGetHit_lyingDown = 5110
+StateDownedGetHit_gettingUp = 5120
+StateDownedGetHit_lyingDefeated = 5150
+StateAirGetHit_fallRecoveryOnGroundStillFalling = 5200
+StateAirGetHit_fallRecoveryOnGround = 5201
+StateAirGetHit_fallRecoveryInAir = 5210
+StateContinueScreenAnimation = 5500
+StateInitialize = 5900
+
+; dizzy.zss states
+StateDizzy = 5300
+StateDizzyFallDown_standCrouch = 5301
+StateDizzyFallDown_air = 5302
+StateDizzyLyingDown = 5303
+StateDizzyBirdsHelper = 5310
+
+; guardbreak.zss states
+StateGuardBreakHit = 5400
+StateGuardBreakRecover = 5401
+
+; tag.zss states
+StateTagEnteringScreen = 5600
+StateTagLeavingScreen = 5610
+StateTagWaitingOutside = 5611
+StateTagJumpingIn = 5620
+StateTagLanding = 5621
+
+; fightfx.air
+FxLightHitSpark = 0
+FxMediumHitSpark = 1
+FxStrongHitSpark = 2
+FxVeryStrongHitSpark = 3
+FxWeakBloodHitSpark = 10
+FxMediumBloodHitSpark = 11
+FxStrongBloodHitSpark = 12
+FxGuardSpark = 40
+FxSmallGroundShockwave = 60
+FxMediumGroundShockwave = 61
+FxStrongGroundShockwave = 62
+FxLightWallHitShockwave = 70
+FxMediumWallHitShockwave = 71
+FxStrongWallHitShockwave = 72
+FxLevel1SuperEffect = 100
+FxLevel2SuperEffect = 101
+FxLevel3SuperEffect = 102
+FxSmallFloorDust = 120
+FxPowerUpEffect = 130
+
+FxDizzyEffect = 5300
+FxGuardBreakSpark = 5400
+FxGuardBreakShockwave = 5410
+FxTagSwitchAI = 5600
+FxTagSwitchP1 = 5601
+FxTagSwitchP2 = 5602
+FxBackgroundColor = 9000
+
+; fight.def
+MsgFirstAttack = 401
+MsgCounterHit = 402
+MsgTechnical = 403
+MsgReversal = 404
+MsgDanger = 405
+MsgDizzy = 406
+MsgCombo3 = 407
+MsgCombo5 = 408
+MsgCombo10 = 409
+MsgCombo15 = 410
+MsgCombo20 = 411
+MsgCombo25 = 412
+MsgWinSpecial = 413
+MsgWinHyper = 414
+MsgWinPerfect = 415
+MsgPartnerAssist = 416 ;not used
+MsgPartnerChange = 417
+MsgPartnerDown = 418
+MsgPartnerAssistOK = 419 ;not used
+MsgActiveSwitch = 420
+MsgCounterSwitch = 421
+MsgGuardBreak = 422
+MsgParry = 423
+MsgJustDefend = 424 ;not used
+
+; GetHitVar(attr)
+AttrStandingNormalAttack = 65
+AttrCrouchingNormalAttack = 66
+AttrAerialNormalAttack = 68
+AttrStandingNormalThrow = 129
+AttrCrouchingNormalThrow = 130
+AttrAerialNormalThrow = 132
+AttrStandingNormalProjectile = 257
+AttrCrouchingNormalProjectile = 258
+AttrAerialNormalProjectile = 260
+AttrStandingSuperAttack = 513
+AttrCrouchingSuperAttack = 514
+AttrAerialSuperAttack = 516
+AttrStandingSuperThrow = 1025
+AttrCrouchingSuperThrow = 1026
+AttrAerialSuperThrow = 1028
+AttrStandingSuperProjectile = 2049
+AttrCrouchingSuperProjectile = 2050
+AttrAerialSuperProjectile = 2052
+AttrStandingHyperAttack = 4097
+AttrCrouchingHyperAttack = 4098
+AttrAerialHyperAttack = 4100
+AttrStandingHyperThrow = 8193
+AttrCrouchingHyperThrow = 8194
+AttrAerialHyperThrow = 8196
+AttrStandingHyperProjectile = 16385
+AttrCrouchingHyperProjectile = 16386
+AttrAerialHyperProjectile = 16388
+
+; Bitwise shifting
+Bit1 = 1
+Bit2 = 2
+Bit3 = 4
+Bit4 = 8
+Bit5 = 16
+Bit6 = 32
+Bit7 = 64
+Bit8 = 128
+Bit9 = 256
+Bit10 = 512
+Bit11 = 1024
+Bit12 = 2048
+Bit13 = 4096
+Bit14 = 8192
+Bit15 = 16384
+Bit16 = 32768
+Bit17 = 65536
+Bit18 = 131072
+Bit19 = 262144
+Bit20 = 524288
+Bit21 = 1048576
+Bit22 = 2097152
+Bit23 = 4194304
+Bit24 = 8388608
+Bit25 = 16777216
+Bit26 = 33554432
+Bit27 = 67108864
+Bit28 = 134217728
+Bit29 = 268435456
+Bit30 = 536870912
+Bit31 = 1073741824
+Bit32 = -2147483648
