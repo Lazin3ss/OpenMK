@@ -7,15 +7,15 @@
 
 # Used to call a character voicebyte.
 [Function CharVoice(bank, index)]
-playsnd {value: s$bank, $index; channel: 0}
+playsnd{value: s$bank, $index; channel: 0}
 
 # Used to call a character sound effect.
 [Function CharSFX(bank, index)]
-playsnd {value: s$bank, $index; channel: 1}
+playsnd{value: s$bank, $index; channel: 1}
 
 # Used to call a common.snd sound.
 [Function ComSound(bank, index)]
-playsnd {value: f$bank, $index; channel: 2}
+playsnd{value: f$bank, $index; channel: 2}
 
 # To end a state.
 [Function StateEnd(state)]
@@ -23,17 +23,15 @@ changestate{value: $state; ctrl: 1}
 
 # To apply a camera shake.
 [Function Shake(time, freq, ampl)]
-envshake {
+envshake{
 	time: $time;
 	freq: $freq;
 	ampl: $ampl
 }
 
 [Function HiToLoAndLoToHi()]
-if command = "holddown" {
-	if statetype = S {
-		statetypeset{statetype: C; physics: C}
-	}
+if command = "holddown" && statetype = S {
+	statetypeset{statetype: C; physics: C}
 } else if statetype = C {
 	statetypeset{statetype: S; physics: S}
 }
@@ -45,7 +43,7 @@ if command != "block" {
 
 # High punch hitbox.
 [Function PunchHitboxH()]
-hitdef {
+hitdef{
 	attr: S,NA;
 	hitflag: MAF;
 	guardflag: MA;
@@ -78,7 +76,7 @@ hitdef {
 
 # Low punch hitbox.
 [Function PunchHitboxL()]
-hitdef {
+hitdef{
 	attr: S,NA;
 	hitflag: MAF;
 	guardflag: MA;
@@ -114,27 +112,27 @@ hitdef {
 
 # Reset command buffer variable.
 if time < 2 {
-	var(10) := 0;
+	mapSet{map:"commandBuffer"; value: 0}
 }
 
 # Buffer the next punch.
 if command = "x" { # High Punch
 	if time = [2,13] {
-		var(10) := 1;
+		mapSet{map:"commandBuffer"; value: 1}
 	}
 } else if command = "a" { # Low Punch
 	if time = [2,13] {
-		var(10) := 2;
+		mapSet{map:"commandBuffer"; value: 2}
 	}
 } else if command = "b" || command = "run" || command = "y" || command = "block" { # Jab Cancel
 	if time = [3,10] {
-		var(10) := 3;
+		mapSet{map:"commandBuffer"; value: 3}
 	}
 }
 
 # Jab cancel animation.
-if var(10) = 3 && animelemtime(4) = 2 {
-	changeanim{value: anim; elem: 5}
+if map(commandBuffer) = 3 && animelemtime(4) = 2 {
+	changeAnim{value: anim; elem: 5}
 }
 
 # ---------------------------------------------
@@ -145,7 +143,7 @@ if var(10) = 3 && animelemtime(4) = 2 {
 [Statedef -2]
 
 # This constant enables common things for MK.
-if const(OpenMK.CharEnabled) = 1 {
+if const(OpenMK.Char.Enabled) = 1 {
 	# Disable block as default.
 	assertspecial{flag: nostandguard; flag2: nocrouchguard; flag3: noairguard}
 	# Disable K.O. content.
@@ -154,27 +152,27 @@ if const(OpenMK.CharEnabled) = 1 {
 	# ---------------------------------------------
 	# Run bar logic
 	
-	# Variable 1 is defined when you leave the run state.
+	# Map "leaveRunState" is defined when you leave the run state.
 	# If player has exited run state without them
 	# actually wanting to, variable will be forced to 1.
-	if movetype = h || var(1) = 0 && stateno != 107 {
-		var(1) := 1;
+	if movetype = h || !map(leaveRunState) && stateno != 107 {
+		mapSet{map: "leaveRunState"; value: 1}
 	}
 
 	# This will make it so if you stop running, the RunReload will
 	# deplete from 380 to 0 so the bar refills.
-	if var(1) = 1 {
-		mapadd{map: "RunReload"; value: -20}
+	if map(leaveRunState) {
+		mapAdd{map: "runReload"; value: -20}
 	}
 	
 	# Limit it so it doesn't go below 0.
-	if map(RunReload) <= 0 {
-		mapset{map: "RunReload"; value: 0}
+	if map(runReload) <= 0 {
+		mapSet{map: "runReload"; value: 0}
 	}
 
 	# When reload time hits 0, refill the bar again 'til it's max.
 	if numexplod(10000) = 0 && var(1) = 1 && power < powermax {
-		if map(RunReload) = 0 {
+		if map(runReload) = 0 {
 			poweradd{value: 20}
 		}
 	}
@@ -227,24 +225,16 @@ angledraw{value: 0}
 
 # Set direction for movement.
 if time = 0 {
-	sysvar(1) := 0;
 	call CharVoice(1,1);
 }
 
-# Detect whether it's back or forward.
-if command = "holdback" {
-	sysvar(1) := -1;
-} else if command = "holdfwd" {
-	sysvar(1) := 1;
-}
-
 # Change speed depending of above variable.
-if sysvar(1) = 0 {
-	let x = const(velocity.jump.neu.x); # Neutral Jump
-} else if sysvar(1) = 1 {
+if command = "holdfwd" {
 	let x = const(velocity.jump.fwd.x); # Forward Roll
-} else if sysvar(1) = -1 {
+} else if command = "holdback" {
 	let x = const(velocity.jump.back.x); # Back Roll
+} else {
+	let x = const(velocity.jump.neu.x); # Neutral Jump
 }
 
 # Apply velocity.
@@ -293,9 +283,9 @@ sprpriority: 1;]
 # Limit some movements.
 # In MK3 you can't crouch during walk and run.
 assertspecial{
-flag: nowalk;
-flag2: nocrouch;
-flag3: noautoturn
+	flag: nowalk;
+	flag2: nocrouch;
+	flag3: noautoturn
 }
 	
 # Apply X velocity from constants.
@@ -307,7 +297,7 @@ poweradd{value: -20}
 # This resets run stuffs.
 # Also, makes character yell.
 if time = 0 {
-	var(1) := 0;
+	mapSet{map: "leaveRunState"; value: 0}
 	mapset{map: "RunReload"; value: 1000}
 	call CharVoice(1,0);
 }
@@ -325,7 +315,7 @@ changeanim{value: 100}
 # This resets timer just in case you've exited the run state.
 # Done so run bar reloads correctly.
 if power <= 0 || command != "holdfwd" || (command = "holdup" || command = "holdfwd" || command = "holdback") {
-	var(1) := 1;
+	mapSet{map: "leaveRunState"; value: 1}
 }
 
 # If player has no more power, just stop.
@@ -466,9 +456,9 @@ if !movecontact {
 call PunchBuffer();
 
 # Move on to next punch state.
-if var(10) = 1 || var(10) = 2 {
+if map(commandBuffer) = 1 || map(commandBuffer) = 2 {
 	if time = 10 {
-		changestate{value: 201 + 20*(var(10) = 2)}
+		changestate{value: 201 + 20*(map(commandBuffer) = 2)}
 	}
 }
 
@@ -502,9 +492,9 @@ if !movecontact {
 call PunchBuffer();
 
 # Move on to next punch state.
-if var(10) = 1 || var(10) = 2 {
+if map(commandBuffer) = 1 || map(commandBuffer) = 2 {
 	if time = 10 {
-		changestate{value: 200 + 20*(var(10) = 2)}
+		changestate{value: 200 + 20*(map(commandBuffer) = 2)}
 	}
 }
 
@@ -538,9 +528,9 @@ if !movecontact {
 call PunchBuffer();
 
 # Move on to next punch state.
-if var(10) = 1 || var(10) = 2 {
+if map(commandBuffer) = 1 || map(commandBuffer) = 2 {
 	if time = 10 {
-		changestate{value: 221 - 20*(var(10) = 1)}
+		changestate{value: 221 - 20*(map(commandBuffer) = 1)}
 	}
 }
 
@@ -574,9 +564,9 @@ if !movecontact {
 call PunchBuffer();
 
 # Move on to next punch state.
-if var(10) = 1 || var(10) = 2 {
+if map(commandBuffer) = 1 || map(commandBuffer) = 2 {
 	if time = 10 {
-		changestate{value: 220 - 20*(var(10) = 1)}
+		changestate{value: 220 - 20*(map(commandBuffer) = 1)}
 	}
 }
 

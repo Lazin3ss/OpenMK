@@ -4,7 +4,7 @@
 
 # ---------------------------------------------
 # Run
-if const(OpenMK.Char.DisableRun) = 0 { # If it isn't disabled.
+if !const(OpenMK.Char.DisableRun) { # If it isn't disabled.
 	if power > 0 && command = "run" && command = "holdfwd" && command != "holdback" && command != "holdup" && stateno != 100 && ctrl && stateno != 180 {
 		if statetype = S {
 			changestate{value: 100}
