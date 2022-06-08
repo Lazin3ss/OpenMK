@@ -7,6 +7,7 @@ battleplan.ladderData = {}
 battleplan.ladderSelected = false
 battleplan.timerSelect = -1
 battleplan.dataLoaded = false
+battleplan.fadeout = false
 
 -- --------------------------------
 -- GENERAL FUNCTIONS
@@ -16,16 +17,16 @@ function battleplan.f_selectBattleplan()
 	-- Init motif data in case it wasn't loaded
 	if not battleplan.dataLoaded then
 		battleplan.f_setBaseBattleplanInfo()
-		battleplan.f_loadLadderData()
+		battleplan.f_initMotifData()
 		battleplan.dataLoaded = true
 	end
 	-- Init battleplan instance
-	if battleplan.ladder == -1 then battleplan.ladder = motif.battleplan.ladders_startladder end
-	if battleplan.timerSelect == -1 then battleplan.timerSelect = motif.battleplan.ladders_timer end
-	battleplan.ladderSelected = false
+	if not battleplan.ladderSelected then 
+		battleplan.f_resetLaddersPos()
+	end
+	battleplan.fadeout = false
 	main.f_fadeReset('fadein', motif.battleplan)
 	main.f_playBGM(false, motif.music.battleplan_bgm, motif.music.battleplan_bgm_loop, motif.music.battleplan_bgm_volume, motif.music.battleplan_bgm_loopstart, motif.music.battleplan_bgm_loopend)
-	
 	-- Loop behavior
 	while true do
 		--draw clearcolor
@@ -34,17 +35,64 @@ function battleplan.f_selectBattleplan()
 		bgDraw(motif.battleplanbgdef.bg, false)
 		-- draw ladders
 		battleplan.f_drawLadders()
-		-- draw ladder bg
-		animDraw(motif.battleplan['ladder' .. battleplan.ladder .. '_bg_data'])
-		animUpdate(motif.battleplan['ladder' .. battleplan.ladder .. '_bg_data'])
-		-- draw ladder name
-		battleplan.ladderData[battleplan.ladder]['font_data']:draw()
-		-- draw title
-		main.txt_battleplan:draw()
 		-- ladder select behavior 
 		if not battleplan.ladderSelected then
+			-- draw ladder bg
+			animDraw(battleplan.ladderData[battleplan.ladder].bg_data)
+			animUpdate(battleplan.ladderData[battleplan.ladder].bg_data)
+			-- draw ladder name
+			battleplan.ladderData[battleplan.ladder]['font_data']:draw()
+			-- select ladder behavior
 			battleplan.f_selectLadder()
+		else
+			-- Get current frame pos values for selected ladder
+			local x = battleplan.ladderData[battleplan.ladder].pos[1]
+			local y = battleplan.ladderData[battleplan.ladder].pos[2]
+			local z = battleplan.ladderData[battleplan.ladder].pos[3]
+			-- Center selected ladder
+			if x ~= motif.info.localcoord[1] / 2 then
+				for k, v in ipairs(battleplan.ladderData) do
+					if math.abs(motif.info.localcoord[1] / 2 - x) < 1.5 then
+						v.pos[1] = v.pos[1] + motif.info.localcoord[1] / 2 - x
+					elseif x > motif.info.localcoord[1] / 2 then
+						v.pos[1] = v.pos[1] - 1.5
+					elseif x < motif.info.localcoord[1] / 2 then
+						v.pos[1] = v.pos[1] + 1.5
+					end
+					battleplan.f_updateLadderPos(k)
+				end
+			-- Zoom selected ladder
+			elseif z < 1 then
+				for k, v in ipairs(battleplan.ladderData) do
+					if k == battleplan.ladder then
+						v.pos[3] = v.pos[3] + 0.01
+						v.pos[2] = v.pos[2] + battleplan.ladderData[battleplan.ladder].size
+					else
+						if v.pos[1] < x then 
+							v.pos[1] = v.pos[1] - 1.5
+						elseif v.pos[1] > x then
+							v.pos[1] = v.pos[1] + 1.5
+						end
+					end
+					battleplan.f_updateLadderPos(k)
+				end
+			-- Scroll selected ladder
+			else
+				battleplan.ladderData[battleplan.ladder].pos[3] = 1
+				if y > motif.info.localcoord[2] then
+					battleplan.ladderData[battleplan.ladder].pos[2] = battleplan.ladderData[battleplan.ladder].pos[2] - 3 
+				else
+					battleplan.ladderData[battleplan.ladder].pos[2] = motif.info.localcoord[2]
+					if battleplan.fadeout == false then
+						main.f_fadeReset('fadeout', motif.battleplan)
+						battleplan.fadeout = true
+					end
+				end
+				battleplan.f_updateLadderPos(battleplan.ladder)
+			end
 		end
+		-- draw title
+		main.txt_battleplan:draw()
 		-- hook
 		hook.run("f_drawBattleplan")
 		-- draw layerno = 1 backgrounds
@@ -62,26 +110,23 @@ end
 function battleplan.f_selectLadder()
 	if battleplan.timerSelect == -1 or main.f_input(main.t_players, {'pal', 's'}) then
 		battleplan.ladderSelected = true
-		-- TODO: This fade reset should be moved elsewhere
-		main.f_fadeReset('fadeout', motif.battleplan)
 		return
 	elseif main.f_input(main.t_players, {'$B'}) then
-		sndPlay(motif.files.snd_data, motif.battleplan.ladders_move_snd[1], motif.battleplan.ladders_move_snd[2])
+		sndPlay(motif.files.snd_data, motif.battleplan.battleplan_move_snd[1], motif.battleplan.battleplan_move_snd[2])
 		battleplan.ladder = battleplan.ladder - 1
 		if battleplan.ladder < 1 then battleplan.ladder = #battleplan.ladderData end
 	elseif main.f_input(main.t_players, {'$F'}) then
-		sndPlay(motif.files.snd_data, motif.battleplan.ladders_move_snd[1], motif.battleplan.ladders_move_snd[2])
+		sndPlay(motif.files.snd_data, motif.battleplan.battleplan_move_snd[1], motif.battleplan.battleplan_move_snd[2])
 		battleplan.ladder = battleplan.ladder + 1
 		if battleplan.ladder > #battleplan.ladderData then battleplan.ladder = 1 end
 	end
 end
 
-function battleplan.f_setLadderPos(l, x, y, z)
-	-- Update ladder data pos values
-	battleplan.ladderData[l].pos[1] = x
-	battleplan.ladderData[l].pos[2] = y
-	battleplan.ladderData[l].scale = z
-	-- Set anims' scale and pos
+function battleplan.f_updateLadderPos(l)
+	local x = battleplan.ladderData[l].pos[1]
+	local y = battleplan.ladderData[l].pos[2]
+	local z = battleplan.ladderData[l].pos[3]
+	-- Set anims' scale and pos 
 	animSetScale(battleplan.ladderData[l].base_data, z, z)
 	animSetPos(battleplan.ladderData[l].base_data, x, y)
 	for i, a in ipairs(battleplan.ladderData[l].bracket_data) do
@@ -104,79 +149,201 @@ function battleplan.f_drawLadders()
 	end
 end
 
+function battleplan.f_resetLaddersPos()
+	for k, v in ipairs(battleplan.ladderData) do
+		v.pos[1] = v.default_pos[1]
+		v.pos[2] = v.default_pos[2]
+		v.pos[3] = v.default_pos[3]
+		battleplan.f_updateLadderPos(k)
+	end
+end
+
 -- --------------------------------
--- INITIALIZE CODE
+-- INITIALIZE FUNCTIONS
 -- --------------------------------
-local function f_createSprAnim(group, index, offset, facing)
-	return animNew(motif.files.spr_data, group .. ', ' .. index .. ', ' .. offset[1] .. ', ' .. offset[2] .. ', -1' .. facing)
+
+-- Function: Creates spr data. Based on motif.f_loadSprData()
+local anim = ''
+local facing = ''
+local function f_createSprData(t, v)
+	local sprData = {}
+	local animParam = v.s .. 'anim'
+	local sprParam = v.s .. 'spr'
+	local data = v.s .. 'data'
+	-- optional prefix argument only changes parameter name for anim/spr numbers assignment
+	if v.prefix ~= nil then
+		animParam = v.s .. v.prefix .. 'anim'
+		sprParam = v.s .. v.prefix .. 'spr'
+		data = v.s .. v.prefix .. 'data'
+	end
+	if t[v.s .. 'offset'] == nil then t[v.s .. 'offset'] = {0, 0} end
+	if t[v.s .. 'scale'] == nil then t[v.s .. 'scale'] = {1.0, 1.0} end
+	if t[animParam] ~= nil and t[animParam] ~= -1 and motif.anim[t[animParam]] ~= nil then --create animation data
+		if t[v.s .. 'facing'] == nil then t[v.s .. 'facing'] = 1 end
+		sprData = main.f_animFromTable(
+			motif.anim[t[animParam]],
+			motif.files.spr_data,
+			t[v.s .. 'offset'][1] + (v.x or 0),
+			t[v.s .. 'offset'][2] + (v.y or 0),
+			t[v.s .. 'scale'][1],
+			t[v.s .. 'scale'][2],
+			motif.f_animFacing(t[v.s .. 'facing'])
+		)
+	elseif t[sprParam] ~= nil and #t[sprParam] > 0 then --create sprite data
+		if #t[sprParam] == 1 then --fix values
+			if type(t[sprParam][1]) == 'string' then
+				t[sprParam] = {tonumber(t[sprParam][1]:match('^([0-9]+)')), 0}
+			else
+				t[sprParam] = {t[sprParam][1], 0}
+			end
+		end
+		if t[v.s .. 'facing'] == -1 then facing = ', H' else facing = '' end
+		sprData = animNew(motif.files.spr_data, t[sprParam][1] .. ', ' .. t[sprParam][2] .. ', ' .. t[v.s .. 'offset'][1] + (v.x or 0) .. ', ' .. t[v.s .. 'offset'][2] + (v.y or 0) .. ', -1' .. facing)
+		animSetScale(sprData, t[v.s .. 'scale'][1], t[v.s .. 'scale'][2])
+		animUpdate(sprData)
+	else --create dummy data
+		sprData = animNew(motif.files.spr_data, '-1,0, 0,0, -1')
+		animUpdate(sprData)
+	end
+	animSetWindow(sprData, 0, 0, motif.info.localcoord[1], motif.info.localcoord[2])
+	return sprData
 end
 
 -- TODO: Rewrite this function after 0.99 releases
 function battleplan.f_setBaseBattleplanInfo()
-	-- bgclearcolor
-	if motif.battleplanbgdef.bgclearcolor == nil then motif.battleplanbgdef.bgclearcolor = {0, 0, 0} end
-	-- Music
-	if motif.music.battleplan_bgm ~= nil then
-		motif.music.battleplan_bgm = searchFile(motif.music.battleplan_bgm, {motif.fileDir, '', 'data/', 'sound/'})
-	else
-		motif.music.battleplan_bgm = ""
-	end
-	if motif.music.battleplan_bgm_loopstart == nil or motif.music.battleplan_bgm_loopstart == "" then motif.music.battleplan_bgm_loopstart = 0 end
-	if motif.music.battleplan_bgm_loopend == nil or motif.music.battleplan_bgm_loopend == "" then motif.music.battleplan_bgm_loopend = 0 end
-	-- Fade
-	motif.f_loadSprData(motif.battleplan, {s = 'fadein_'})
-	motif.f_loadSprData(motif.battleplan, {s = 'fadeout_'})
-	-- Texts
-	for k in pairs(motif.battleplan) do
-		if k:find("text") ~= nil then
-			s = k:gsub("text", "")
-			if motif.battleplan[s .. 'font'] == nil then motif.battleplan[s .. 'font'] = {0, 0, 0, 0, 0, 0, 0} end
-			if motif.battleplan[s .. 'offset'] == nil then motif.battleplan[s .. 'offset'] = {0, 0} end
-			if motif.battleplan[s .. 'scale'] == nil then motif.battleplan[s .. 'scale'] = {1.0, 1.0} end
+	-- Default value tables
+	local t_bgmDefaultParams = {
+		battleplan_bgm = "",
+		battleplan_bgm_volume = 100,
+		battleplan_bgm_loop = 1,
+		battleplan_bgm_loopstart = 0,
+		battleplan_bgm_loopend = 0
+	}
+	local t_battleplanDefaultParams = {
+		fadein_time = 10,
+		fadein_col = {0, 0, 0},
+		fadein_anim = -1,
+		fadeout_time = 10,
+		fadeout_col = {0, 0, 0},
+		fadeout_anim = -1,
+		title_text = "Choose Your Destiny",
+		title_font = {0, 0, 0, 0, 0, 0, 0},
+		title_offset = {0, 0},
+		title_scale = {1.0, 1.0},
+		ladders = 1,
+		startladder = 1,
+		battleplan_timer = 240,
+		battleplan_move_snd = {100,0},
+		battleplan_zoom_speed = 100
+	}
+	
+	-- Set default values in motif table
+	for k, v in pairs(t_bgmDefaultParams) do
+		if motif.music[k] == nil then
+			motif.music[k] = v
+		elseif k ~= 'battleplan_bgm' then
+			motif.music[k] = tonumber(motif.music[k])
 		end
 	end
-	-- Title
-	main.txt_battleplan = main.f_createTextImg(motif.battleplan, 'title')
-	-- Ladders
-	if motif.battleplan.ladders == nil then motif.battleplan.ladders = 3 end
-	if motif.battleplan.ladders_timer == nil then motif.battleplan.timer = 240 end
-	if motif.battleplan.ladders_startladder == nil then motif.battleplan.startladder = 1 end
-	if motif.battleplan.ladders_move_snd == nil then motif.battleplan.ladders_move_snd = {0, 0} end	
-	for i = 1, motif.battleplan.ladders do
-		local l = 'ladder' .. i
-		if motif.battleplan[l .. '_size'] == nil then motif.battleplan[l .. '_size'] = 5 end
-		if motif.battleplan[l .. '_pos'] == nil then motif.battleplan[l .. '_pos'] = {0, 0} end
-		if motif.battleplan[l .. '_scale'] == nil then motif.battleplan[l .. '_scale'] = {0, 0} end
-		motif.f_loadSprData(motif.battleplan, {s = l .. '_bg_'})
-		motif.f_loadSprData(motif.battleplan, {s = l .. '_base_'})
-		motif.f_loadSprData(motif.battleplan, {s = l .. '_bracket_'})
+	for k, v in pairs(t_battleplanDefaultParams) do
+		if motif.battleplan[k] == nil then motif.battleplan[k] = v end
 	end
 	-- Debug printing
 	--if main.debugLog then main.f_printTable(motif, "debug/t_motif.txt") end
 end
 
-function battleplan.f_loadLadderData()
+function battleplan.f_initMotifData()
+	-- bgclearcolor
+	if motif.battleplanbgdef.bgclearcolor == nil then motif.battleplanbgdef.bgclearcolor = {0, 0, 0} end
+	-- Music
+	if motif.music.battleplan_bgm ~= "" then
+		motif.music.battleplan_bgm = searchFile(motif.music.battleplan_bgm, {motif.fileDir, '', 'data/', 'sound/'})
+	end
+	-- Fade
+	motif.f_loadSprData(motif.battleplan, {s = 'fadein_'})
+	motif.f_loadSprData(motif.battleplan, {s = 'fadeout_'})
+	-- Title
+	main.txt_battleplan = main.f_createTextImg(motif.battleplan, 'title')
+	-- Ladders
+	battleplan.f_initLadderData()
+end
+
+function battleplan.f_initLadderData()
+	-- Table with ladder default params
+	local t_ladderDefaultParams = {
+		size = 5,
+		pos = {0, 0, 1.0},
+		name_text = "",
+		name_font = {0, 0, 0, 0, 0, 0, 0},
+		name_offset = {0, 0},
+		name_scale = {1.0, 1.0},
+		bg_anim = -1,
+		bg_spr = {},
+		bg_offset = {0, 0},
+		bg_facing = 1,
+		bg_scale = {1.0, 1.0},
+		base_anim = -1,
+		base_spr = {},
+		base_offset = {0, 0},
+		base_facing = 1,
+		base_scale = {1.0, 1.0},
+		bracket_anim = -1,
+		bracket_spr = {},
+		bracket_offset = {0, 0},
+		bracket_facing = 1,
+		bracket_scale = {1.0, 1.0}
+	}
+	
 	for i = 1, motif.battleplan.ladders do
 		local l = 'ladder' .. i
-		local baseInfo = animGetSpriteInfo(motif.battleplan[l .. '_base_data'])
-		local bracketInfo = animGetSpriteInfo(motif.battleplan[l .. '_bracket_data'])
-		table.insert(battleplan.ladderData, {
-			name = motif.battleplan[l .. '_name_text'],
-			size = motif.battleplan[l .. '_size'],
-			pos = {0, 0},
-			scale = 1.0,
-			base_px = {baseInfo.Size[1], baseInfo.Size[2]},
-			bracket_px = {bracketInfo.Size[1], bracketInfo.Size[2]},
-			base_data = motif.battleplan[l .. '_base_data'],
-			bracket_data = {},
-			font_data = main.f_createTextImg(motif.battleplan, l .. '_name')
-		})
-		for j = 1, battleplan.ladderData[i].size do
-			table.insert(battleplan.ladderData[i].bracket_data, f_createSprAnim(motif.battleplan[l .. '_bracket_spr'][1], motif.battleplan[l .. '_bracket_spr'][2], {0, 0}, 1))
+		-- Create temp ladder
+		for k, v in pairs(t_ladderDefaultParams) do
+			if motif.battleplan[l .. '_' .. k] ~= nil then
+				if type(v) == "table" and type(motif.battleplan[l .. '_' .. k]) == "table" then
+					for k2, v2 in ipairs(motif.battleplan[l .. '_' .. k]) do
+						if v2 == nil then
+							motif.battleplan[l .. '_' .. k][k2] = v[k2]
+						end
+					end
+				end
+			else
+				motif.battleplan[l .. '_' .. k] = v
+			end
 		end
-		battleplan.f_setLadderPos(i, motif.battleplan[l .. '_pos'][1], motif.battleplan[l .. '_pos'][2], motif.battleplan[l .. '_scale'][1])
+		-- Add ladder info to ladderData table
+		table.insert(battleplan.ladderData, {
+			name = motif.battleplan[l .. '_' .. 'name_text'],
+			size = motif.battleplan[l .. '_' .. 'size'],
+			pos = main.f_tableCopy(motif.battleplan[l .. '_' .. 'pos']),
+			default_pos = main.f_tableCopy(motif.battleplan[l .. '_' .. 'pos']),
+			base_px = {},
+			bracket_px = {},
+			base_data = f_createSprData(motif.battleplan, {s = l .. '_' .. 'base_'}),
+			bracket_data = {},
+			font_data = main.f_createTextImg(motif.battleplan, l .. '_' .. 'name'),
+			bg_data = f_createSprData(motif.battleplan, {s = l .. '_' .. 'bg_'})
+		})
+		-- Add brackets data to ladderData table
+		for j = 1, battleplan.ladderData[i].size do
+			table.insert(battleplan.ladderData[i].bracket_data, f_createSprData(motif.battleplan, {s = l .. '_' .. 'bracket_'}))
+		end
+		-- Init various data
+		local baseInfo = animGetSpriteInfo(battleplan.ladderData[i].base_data)
+		local bracketInfo = animGetSpriteInfo(battleplan.ladderData[i].bracket_data[1])
+		battleplan.ladderData[i].base_px = {baseInfo.Size[1], baseInfo.Size[2]}
+		battleplan.ladderData[i].bracket_px = {bracketInfo.Size[1], bracketInfo.Size[2]}
+		battleplan.f_updateLadderPos(i)
 	end
 	-- Debug printing
 	if main.debugLog then main.f_printTable(battleplan.ladderData, "debug/t_ladderdata.txt") end
 end
+
+local function f_resetBattleplan()
+	battleplan.ladder = -1
+	battleplan.ladder = motif.battleplan.startladder
+	battleplan.timerSelect = motif.battleplan.battleplan_timer
+	battleplan.ladderSelected = false
+end
+
+hook.add("start.f_selectScreen", "resetBattleplan", f_resetBattleplan)
 
