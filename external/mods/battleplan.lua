@@ -8,11 +8,23 @@ battleplan.ladderSelected = false
 battleplan.timerSelect = -1
 battleplan.dataLoaded = false
 battleplan.fadeout = false
+battleplan.finished = false
+local max_z = 1000
 
 -- --------------------------------
 -- GENERAL FUNCTIONS
 -- --------------------------------
 
+-- --------------------------------
+-- BATTLEPLAN BEHAVIOR
+-- --------------------------------
+
+-- Function: Creates scale multiplier from given z.
+local function zScaleMul(z)
+	return 1 - z / max_z
+end
+
+-- Function: Manages general battleplan behavior.
 function battleplan.f_selectBattleplan()
 	-- Init motif data in case it wasn't loaded
 	if not battleplan.dataLoaded then
@@ -25,62 +37,54 @@ function battleplan.f_selectBattleplan()
 		battleplan.f_resetLaddersPos()
 	end
 	battleplan.fadeout = false
+	battleplan.finished = false
 	main.f_fadeReset('fadein', motif.battleplan)
 	main.f_playBGM(false, motif.music.battleplan_bgm, motif.music.battleplan_bgm_loop, motif.music.battleplan_bgm_volume, motif.music.battleplan_bgm_loopstart, motif.music.battleplan_bgm_loopend)
 	-- Loop behavior
-	while true do
-		--draw clearcolor
-		clearColor(motif.battleplanbgdef.bgclearcolor[1], motif.battleplanbgdef.bgclearcolor[2], motif.battleplanbgdef.bgclearcolor[3])
-		-- draw layerno = 0 backgrounds
-		bgDraw(motif.battleplanbgdef.bg, false)
-		-- draw ladders
-		battleplan.f_drawLadders()
+	while not battleplan.finished do
 		-- ladder select behavior 
 		if not battleplan.ladderSelected then
-			-- draw ladder bg
-			animDraw(battleplan.ladderData[battleplan.ladder].bg_data)
-			animUpdate(battleplan.ladderData[battleplan.ladder].bg_data)
-			-- draw ladder name
-			battleplan.ladderData[battleplan.ladder]['font_data']:draw()
-			-- select ladder behavior
 			battleplan.f_selectLadder()
 		else
 			-- Get current frame pos values for selected ladder
 			local x = battleplan.ladderData[battleplan.ladder].pos[1]
 			local y = battleplan.ladderData[battleplan.ladder].pos[2]
 			local z = battleplan.ladderData[battleplan.ladder].pos[3]
-			-- Center selected ladder
+			-- FIRST PHASE: Center selected ladder on the screen
 			if x ~= motif.info.localcoord[1] / 2 then
 				for k, v in ipairs(battleplan.ladderData) do
-					if math.abs(motif.info.localcoord[1] / 2 - x) < 1.5 then
+					if math.abs(motif.info.localcoord[1] / 2 - x) < motif.battleplan.battleplan_center_vel then
 						v.pos[1] = v.pos[1] + motif.info.localcoord[1] / 2 - x
 					elseif x > motif.info.localcoord[1] / 2 then
-						v.pos[1] = v.pos[1] - 1.5
+						v.pos[1] = v.pos[1] - motif.battleplan.battleplan_center_vel
 					elseif x < motif.info.localcoord[1] / 2 then
-						v.pos[1] = v.pos[1] + 1.5
+						v.pos[1] = v.pos[1] + motif.battleplan.battleplan_center_vel
 					end
 					battleplan.f_updateLadderPos(k)
 				end
-			-- Zoom selected ladder
-			elseif z < 1 then
+			-- SECOND PHASE: Zoom selected ladder
+			elseif z > 0 then
 				for k, v in ipairs(battleplan.ladderData) do
+					-- Zoom selected ladder
 					if k == battleplan.ladder then
-						v.pos[3] = v.pos[3] + 0.01
-						v.pos[2] = v.pos[2] + battleplan.ladderData[battleplan.ladder].size
+						v.pos[3] = v.pos[3] - motif.battleplan.battleplan_zoom_vel
+						local angle_y = v.ladder_px[2] + motif.battleplan.battleplan_zoom_offsety
+						v.pos[2] = ((v.default_pos[2] - angle_y) / v.default_pos[3]) * v.pos[3] + angle_y
 					else
-						if v.pos[1] < x then 
-							v.pos[1] = v.pos[1] - 1.5
+						-- Move other ladders out of the way
+						if v.pos[1] < x then
+							v.pos[1] = v.pos[1] - motif.battleplan.battleplan_center_vel
 						elseif v.pos[1] > x then
-							v.pos[1] = v.pos[1] + 1.5
+							v.pos[1] = v.pos[1] + motif.battleplan.battleplan_center_vel
 						end
 					end
 					battleplan.f_updateLadderPos(k)
 				end
-			-- Scroll selected ladder
+			-- THIRD PHASE: Scroll selected ladder
 			else
-				battleplan.ladderData[battleplan.ladder].pos[3] = 1
+				battleplan.ladderData[battleplan.ladder].pos[3] = 0
 				if y > motif.info.localcoord[2] then
-					battleplan.ladderData[battleplan.ladder].pos[2] = battleplan.ladderData[battleplan.ladder].pos[2] - 3 
+					battleplan.ladderData[battleplan.ladder].pos[2] = battleplan.ladderData[battleplan.ladder].pos[2] - motif.battleplan.battleplan_scroll_vel 
 				else
 					battleplan.ladderData[battleplan.ladder].pos[2] = motif.info.localcoord[2]
 					if battleplan.fadeout == false then
@@ -91,19 +95,8 @@ function battleplan.f_selectBattleplan()
 				battleplan.f_updateLadderPos(battleplan.ladder)
 			end
 		end
-		-- draw title
-		main.txt_battleplan:draw()
-		-- hook
-		hook.run("f_drawBattleplan")
-		-- draw layerno = 1 backgrounds
-		bgDraw(motif.battleplanbgdef.bg, true)
-		-- draw fadein / fadeout
-		main.f_fadeAnim(motif.battleplan)
-		-- frame transition
-		if not main.f_frameChange() then
-			break --skip last frame rendering
-		end
-		main.f_refresh()
+		-- Draw battleplan items
+		battleplan.f_drawBattleplan()
 	end
 end
 
@@ -127,13 +120,56 @@ function battleplan.f_updateLadderPos(l)
 	local y = battleplan.ladderData[l].pos[2]
 	local z = battleplan.ladderData[l].pos[3]
 	-- Set anims' scale and pos 
+	z = zScaleMul(z) -- Convert z to scale mul
 	animSetScale(battleplan.ladderData[l].base_data, z, z)
 	animSetPos(battleplan.ladderData[l].base_data, x, y)
 	for i, a in ipairs(battleplan.ladderData[l].bracket_data) do
 		animSetScale(a, z, z)
 		animSetPos(a, x, y - battleplan.ladderData[l].base_px[2] * z - battleplan.ladderData[l].bracket_px[2] * z * (i - 1))
 	end
-	
+end
+
+function battleplan.f_resetLaddersPos()
+	for k, v in ipairs(battleplan.ladderData) do
+		v.pos[1] = v.default_pos[1]
+		v.pos[2] = v.default_pos[2]
+		v.pos[3] = v.default_pos[3]
+		battleplan.f_updateLadderPos(k)
+	end
+end
+
+-- --------------------------------
+-- BATTLEPLAN DRAWING
+-- --------------------------------
+
+function battleplan.f_drawBattleplan()
+	--draw clearcolor
+	clearColor(motif.battleplanbgdef.bgclearcolor[1], motif.battleplanbgdef.bgclearcolor[2], motif.battleplanbgdef.bgclearcolor[3])
+	-- draw layerno = 0 backgrounds
+	bgDraw(motif.battleplanbgdef.bg, false)
+	-- draw ladders
+	battleplan.f_drawLadders()
+	if not battleplan.ladderSelected then
+		-- draw ladder bg
+		animDraw(battleplan.ladderData[battleplan.ladder].bg_data)
+		animUpdate(battleplan.ladderData[battleplan.ladder].bg_data)
+		-- draw ladder name
+		battleplan.ladderData[battleplan.ladder]['font_data']:draw()
+	end
+	-- draw title
+	main.txt_battleplan:draw()
+	-- hook
+	hook.run("f_drawBattleplan")
+	-- draw layerno = 1 backgrounds
+	bgDraw(motif.battleplanbgdef.bg, true)
+	-- draw fadein / fadeout
+	main.f_fadeAnim(motif.battleplan)
+	-- frame transition
+	if not main.f_frameChange() then
+		battleplan.finished = true
+		return --skip last frame rendering
+	end
+	main.f_refresh()
 end
 
 function battleplan.f_drawLadders()
@@ -149,17 +185,8 @@ function battleplan.f_drawLadders()
 	end
 end
 
-function battleplan.f_resetLaddersPos()
-	for k, v in ipairs(battleplan.ladderData) do
-		v.pos[1] = v.default_pos[1]
-		v.pos[2] = v.default_pos[2]
-		v.pos[3] = v.default_pos[3]
-		battleplan.f_updateLadderPos(k)
-	end
-end
-
 -- --------------------------------
--- INITIALIZE FUNCTIONS
+-- INITIALIZE CODE
 -- --------------------------------
 
 -- Function: Creates spr data. Based on motif.f_loadSprData()
@@ -234,7 +261,9 @@ function battleplan.f_setBaseBattleplanInfo()
 		startladder = 1,
 		battleplan_timer = 240,
 		battleplan_move_snd = {100,0},
-		battleplan_zoom_speed = 100
+		battleplan_center_vel = 1.5,
+		battleplan_zoom_vel = 0.1,
+		battleplan_scroll_vel = 3
 	}
 	
 	-- Set default values in motif table
@@ -318,6 +347,7 @@ function battleplan.f_initLadderData()
 			default_pos = main.f_tableCopy(motif.battleplan[l .. '_' .. 'pos']),
 			base_px = {},
 			bracket_px = {},
+			ladder_px = {},
 			base_data = f_createSprData(motif.battleplan, {s = l .. '_' .. 'base_'}),
 			bracket_data = {},
 			font_data = main.f_createTextImg(motif.battleplan, l .. '_' .. 'name'),
@@ -332,6 +362,7 @@ function battleplan.f_initLadderData()
 		local bracketInfo = animGetSpriteInfo(battleplan.ladderData[i].bracket_data[1])
 		battleplan.ladderData[i].base_px = {baseInfo.Size[1], baseInfo.Size[2]}
 		battleplan.ladderData[i].bracket_px = {bracketInfo.Size[1], bracketInfo.Size[2]}
+		battleplan.ladderData[i].ladder_px = {math.max(baseInfo.Size[1], bracketInfo.Size[1]), baseInfo.Size[2] + (bracketInfo.Size[2] * battleplan.ladderData[i].size)}
 		battleplan.f_updateLadderPos(i)
 	end
 	-- Debug printing
