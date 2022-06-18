@@ -13,7 +13,7 @@ battleplan.fadeoutActive = false
 battleplan.finished = false
 battleplan.waitTime = {}
 
-battleplan.cursor = {data = {}, pos = {0, 0}}
+battleplan.cursor = {data = {}, done_data, pos = {0, 0}}
 battleplan.ladder = -1
 battleplan.timerSelect = -1
 battleplan.wins = 0
@@ -22,6 +22,13 @@ local max_z = 1000
 -- --------------------------------
 -- GENERAL FUNCTIONS
 -- --------------------------------
+
+function battleplan.f_setCursorPos(x, y)
+	battleplan.cursor.pos[1] = x
+	battleplan.cursor.pos[2] = y
+	animSetPos(battleplan.cursor.data, battleplan.cursor.pos[1], battleplan.cursor.pos[2])
+	animSetPos(battleplan.cursor.done_data, battleplan.cursor.pos[1], battleplan.cursor.pos[2])
+end
 
 -- Function: Creates scale multiplier from given z.
 local function zScaleMul(z)
@@ -32,18 +39,25 @@ function battleplan.f_updateLadderPos(l)
 	local x = battleplan.ladderData[l].pos[1]
 	local y = battleplan.ladderData[l].pos[2]
 	local z = battleplan.ladderData[l].pos[3]
-	-- Set anims' scale and pos 
 	z = zScaleMul(z) -- Convert z to scale mul
+	-- Update ladder base pos
 	animSetScale(battleplan.ladderData[l].base_data, z, z)
 	animSetPos(battleplan.ladderData[l].base_data, x, y)
+	-- Update ladder brackets pos
 	for i, a in ipairs(battleplan.ladderData[l].bracket_data) do
 		animSetScale(a, z, z)
 		animSetPos(a, x, y - battleplan.ladderData[l].base_px[2] * z - battleplan.ladderData[l].bracket_px[2] * z * (i - 1))
 	end
+	-- Update ladder char cells pos
+	for i, c in ipairs(battleplan.ladderData[l].chars) do
+		if c.cell_data ~= 0 then
+			animSetScale(c.cell_data, battleplan.ladderData[l].cell_scale[1] * z, battleplan.ladderData[l].cell_scale[2] * z)
+			animSetPos(c.cell_data, x + (battleplan.ladderData[l].cell_offset[1] * z), y - battleplan.ladderData[l].base_px[2] * z - battleplan.ladderData[l].bracket_px[2] * z * (i - 1) + (battleplan.ladderData[l].cell_offset[2] * z))
+		end
+	end
 end
 
 function battleplan.f_resetLaddersPos()
-	battleplan.waitTime = {motif.battleplan.camera_center_wait, motif.battleplan.camera_zoom_wait, motif.battleplan.rival_wait}
 	for k, v in ipairs(battleplan.ladderData) do
 		v.pos[1] = v.default_pos[1]
 		v.pos[2] = v.default_pos[2]
@@ -53,8 +67,20 @@ function battleplan.f_resetLaddersPos()
 end
 
 function battleplan.f_setLadderChar(l, pos, char_ref)
-	if pos >= 1 and pos <= battleplan.ladderData[l].size then
-		battleplan.ladderData[l].chars[pos] = char_ref
+	if char_ref >= 0 and char_ref <= #main.t_selChars - 1 and pos >= 1 and pos <= battleplan.ladderData[l].size then
+		-- Clean table data
+		if battleplan.ladderData[l].chars[pos] ~= nil and battleplan.ladderData[l].chars[pos].cell_data ~= 0 then
+			battleplan.ladderData[l].chars[pos].cell_data = 0 -- Remove memory allocation
+		end
+		-- Set new data to table
+		battleplan.ladderData[l].chars[pos] = {
+			name = main.t_selChars[char_ref + 1].name,
+			def = main.t_selChars[char_ref + 1].def,
+			cell_data = 0,
+			cell_offset = {0, 0},
+			cell_scale = {1.0, 1.0},
+			ref = char_ref
+		}
 		return true
 	end
 	return false
@@ -68,28 +94,41 @@ function battleplan.f_getLadderChar(l, pos)
 end
 
 function battleplan.f_getLadderCharDef(l, pos)
-	return main.t_selChars[battleplan.f_getLadderChar(l, pos) + 1].def or nil
+	return battleplan.f_getLadderChar(l, pos).def or nil
 end
 
 function battleplan.f_getLadderCharCell(l, pos)
-	return main.t_selChars[battleplan.f_getLadderChar(l, pos) + 1].cell_data or nil
+	return battleplan.f_getLadderChar(l, pos).cell_data or 0
 end
 
-function battleplan.f_setLadderChars(l)
+function battleplan.f_createLadderRoster(l)
 	-- This function should set ladders chars via various algorhitms. Steps:
 	-- * Set chars declared on select.def
 	-- * On missing spots, fill with random chars
 	if l == nil then
 		-- Do for all ladders
+		for l, d in ipairs(battleplan.ladderData) do
+			for i = 1, d.size do
+				battleplan.f_setLadderChar(l, i, 3)
+			end
+		end
 	else
 		-- Just for ladder l
 	end
 end
 
-function battleplan.f_setCursorPos(x, y)
-	battleplan.cursor.pos[1] = x
-	battleplan.cursor.pos[2] = y
-	animSetPos(battleplan.cursor.data, battleplan.cursor.pos[1], battleplan.cursor.pos[2])
+function battleplan.f_setLaddersRosterCellData(del)
+	for k, v in ipairs(battleplan.ladderData) do
+		for k2, v2 in ipairs(v.chars) do
+			if del == nil or del == false then
+				v2.cell_data = animGetPreloadedData('char', v2.ref, motif.select_info.portrait_spr[1], motif.select_info.portrait_spr[2])
+			else
+				v2.cell_data = 0
+			end
+		end
+		battleplan.f_updateLadderPos(k)
+	end
+	if main.debugLog then main.f_printTable(battleplan.ladderData, "debug/t_ladderdata.txt") end
 end
 
 -- --------------------------------
@@ -104,8 +143,11 @@ function battleplan.f_selectBattleplan()
 		battleplan.ladder = motif.battleplan.startladder
 		battleplan.timerSelect = motif.battleplan.timer_count
 		battleplan.cameraFinished = false
+		battleplan.waitTime = {motif.battleplan.cursor_done_wait, motif.battleplan.camera_center_wait, motif.battleplan.camera_zoom_wait, motif.battleplan.rival_wait}
+		battleplan.f_createLadderRoster()
 		battleplan.f_resetLaddersPos()
 	end
+	battleplan.f_setLaddersRosterCellData(false)
 	battleplan.portraitMoved = false
 	battleplan.rivalDisplayed = false
 	battleplan.fadeoutActive = false
@@ -118,6 +160,8 @@ function battleplan.f_selectBattleplan()
 		if not battleplan.ladderSelected then
 			battleplan.f_selectLadder()
 		-- ladder camera behavior after selecting ladder
+		elseif battleplan.waitTime[1] > 0 then
+			battleplan.waitTime[1] =  battleplan.waitTime[1] - 1
 		elseif not battleplan.cameraFinished then
 			battleplan.f_updateCameraAnim()
 		-- showcase next rival
@@ -130,6 +174,7 @@ function battleplan.f_selectBattleplan()
 		-- Draw battleplan items
 		battleplan.f_drawBattleplan()
 	end
+	battleplan.f_setLaddersRosterCellData(true)
 end
 
 function battleplan.f_selectLadder()
@@ -167,8 +212,8 @@ function battleplan.f_updateCameraAnim()
 			end
 			battleplan.f_updateLadderPos(k)
 		end
-	elseif battleplan.waitTime[1] > 0 then
-		 battleplan.waitTime[1] =  battleplan.waitTime[1] - 1
+	elseif battleplan.waitTime[2] > 0 then
+		 battleplan.waitTime[2] =  battleplan.waitTime[2] - 1
 	-- SECOND PHASE: Zoom selected ladder
 	elseif z > 0 then
 		for k, v in ipairs(battleplan.ladderData) do
@@ -188,10 +233,10 @@ function battleplan.f_updateCameraAnim()
 			end
 			battleplan.f_updateLadderPos(k)
 		end
-	elseif battleplan.waitTime[2] > 0 then
-		battleplan.waitTime[2] =  battleplan.waitTime[2] - 1
+	elseif battleplan.waitTime[3] > 0 then
+		battleplan.waitTime[3] =  battleplan.waitTime[3] - 1
 	-- THIRD PHASE: Scroll selected ladder
-	elseif y > motif.info.localcoord[2] then
+	elseif not main.f_input(main.t_players, {'pal'}) and y > motif.info.localcoord[2] then
 		for k, v in ipairs(battleplan.ladderData) do
 			v.pos[2] = math.max(v.pos[2] - motif.battleplan.camera_scroll_vel, motif.info.localcoord[2])
 			battleplan.f_updateLadderPos(k)
@@ -212,8 +257,8 @@ function battleplan.f_rivalDisplay()
 		end
 		battleplan.portraitMoved = true
 	-- Finish rival display
-	elseif battleplan.waitTime[3] > 0 then
-		battleplan.waitTime[3] =  battleplan.waitTime[3] - 1
+	elseif battleplan.waitTime[4] > 0 then
+		battleplan.waitTime[4] =  battleplan.waitTime[4] - 1
 	else
 		battleplan.rivalDisplayed = true
 	end
@@ -239,11 +284,14 @@ function battleplan.f_drawBattleplan()
 		animUpdate(battleplan.cursor.data)
 		-- draw ladder name
 		battleplan.ladderData[battleplan.ladder]['font_data']:draw()
+	elseif battleplan.waitTime[1] > 0 then
+		animDraw(battleplan.cursor.done_data)
+		animUpdate(battleplan.cursor.done_data)
 	end
 	-- draw title
 	main.txt_battleplan:draw()
 	-- hook
-	hook.run("f_drawBattleplan")
+	hook.run("battleplan.f_drawBattleplan")
 	-- draw layerno = 1 backgrounds
 	bgDraw(motif.battleplanbgdef.bg, true)
 	-- draw fadein / fadeout
@@ -267,9 +315,11 @@ function battleplan.f_drawLadders()
 			animDraw(a)
 			animUpdate(a)
 			-- Draw bracket cell
-			--local cell_data = battleplan.f_getLadderCharCell(k, n)
-			--animDraw(cell_data)
-			--animUpdate(cell_data)
+			local cell_data = battleplan.f_getLadderCharCell(k, n)
+			if cell_data ~= 0 then
+				animDraw(cell_data)
+				animUpdate(cell_data)
+			end
 		end
 	end
 end
@@ -400,8 +450,9 @@ function battleplan.f_initMotifData()
 	main.txt_battleplan = main.f_createTextImg(motif.battleplan, 'title')
 	-- Cursor
 	battleplan.cursor.data = f_createSprData(motif.battleplan, {s = 'cursor_'})
+	battleplan.cursor.done_data = f_createSprData(motif.battleplan, {s = 'cursor_done_'})
 	-- Camera Wait Time
-	battleplan.waitTime = {motif.battleplan.camera_center_wait, motif.battleplan.camera_zoom_wait, motif.battleplan.rival_wait}
+	battleplan.waitTime = {motif.battleplan.cursor_done_wait, motif.battleplan.camera_center_wait, motif.battleplan.camera_zoom_wait, motif.battleplan.rival_wait}
 	-- Ladders
 	battleplan.f_initLadderData()
 end
@@ -426,7 +477,7 @@ function battleplan.f_initLadderData()
 		bracket_facing = 1,
 		bracket_scale = {1.0, 1.0},
 		portrait_scale = {1.0, 1.0},
-		portrait_offset = 20, 20
+		portrait_offset = {20, 20}
 	}
 	
 	for i = 1, motif.battleplan.ladders do
@@ -457,7 +508,9 @@ function battleplan.f_initLadderData()
 			ladder_px = {},
 			base_data = f_createSprData(motif.battleplan, {s = l .. '_' .. 'base_'}),
 			bracket_data = {},
-			font_data = main.f_createTextImg(motif.battleplan, l .. '_' .. 'name')
+			font_data = main.f_createTextImg(motif.battleplan, l .. '_' .. 'name'),
+			cell_offset = motif.battleplan[l .. '_' .. 'portrait_offset'],
+			cell_scale = motif.battleplan[l .. '_' .. 'portrait_scale']
 		})
 		-- Add brackets data to ladderData table
 		for j = 1, battleplan.ladderData[i].size do
@@ -469,8 +522,6 @@ function battleplan.f_initLadderData()
 		battleplan.ladderData[i].base_px = {baseInfo.Size[1], baseInfo.Size[2]}
 		battleplan.ladderData[i].bracket_px = {bracketInfo.Size[1], bracketInfo.Size[2]}
 		battleplan.ladderData[i].ladder_px = {math.max(baseInfo.Size[1], bracketInfo.Size[1]), baseInfo.Size[2] + (bracketInfo.Size[2] * battleplan.ladderData[i].size)}
-		-- Update spr data pos
-		battleplan.f_updateLadderPos(i)
 	end
 	-- Update start ladder
 	if motif.battleplan.startladder < 1 then 
