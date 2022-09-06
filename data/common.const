@@ -37,6 +37,46 @@ OpenMK.TagBonesExplosion = 0
 ;If declared, character will explode when being defeated in tag mode
 
 ; ---------------------------------------------
+; Attack Anims
+AnimHighPunchInit = 200
+AnimHighPunchII = 201
+AnimHighPunchI = 202
+AnimLowPunchInit = 220
+AnimLowPunchII = 221
+AnimLowPunchI = 222
+AnimHighKick = 210
+AnimLowKick = 230
+AnimRoundhouseKick = 240
+AnimSweep = 250
+AnimCrouchHighKick = 400
+AnimUppercut = 410
+AnimCrouchLowPunch = 420
+AnimCrouchLowKick = 430
+AnimAirKick = 600
+AnimAirPunch = 610
+AnimLeapKick = 620
+
+; ---------------------------------------------
+; Attack States
+StateHighPunchI = 200
+StateHighPunchII = 201
+StateLowPunchI = 210
+StateLowPunchII = 211
+StateHighKick = 220
+StateLowKick = 230
+StateRoundhouseKick = 240
+StateSweep = 250
+StateCrouchHighKick = 400
+StateUppercut = 410
+StateCrouchLowPunch = 420
+StateCrouchLowKick = 430
+StateAirKick = 600
+StateAirPunch = 610
+StateLeapKick = 620
+StateConnectedKick = 630
+
+
+; ---------------------------------------------
 ; COMMON CONSTANTS
 ; ---------------------------------------------
 
@@ -199,6 +239,7 @@ StateAirGuardHit_shaking = 154
 StateAirGuardHit_knockedAway = 155
 StateLose_timeOver = 170
 StateDrawGame_timeOver = 175
+StateWin = 180
 StatePreIntro = 190
 StateIntro = 191
 StateStandGetHit_shaking = 5000

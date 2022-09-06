@@ -1,3 +1,58 @@
+; ---------------------------------------------
+; OpenMK-exclusive
+[Command]
+name = "back_z"
+command = /$B,z
+time = 7
+buffer.time = 7
+
+[Command]
+name = "back_z"
+command = B,z
+time = 7
+buffer.time = 7
+
+[Command]
+name = "back_z"
+command = B+z
+time = 7
+buffer.time = 7
+
+[Command]
+name = "back_c"
+command = /$B,c
+time = 7
+buffer.time = 7
+
+[Command]
+name = "back_c"
+command = B,c
+time = 7
+buffer.time = 7
+
+[Command]
+name = "back_c"
+command = B+c
+time = 7
+buffer.time = 7
+
+[Command]
+name = "run"
+command = /y
+time = 1
+
+[Command]
+name = "block"
+command = /b
+time = 1
+
+; ---------------------------------------------
+; Common
+[Command]
+name = "recovery"
+command = 
+time = 1
+
 [Command]
 name = "TagShiftBack"
 command = d
@@ -92,56 +147,3 @@ time = 10
 name = "BB"
 command = B,B
 time = 10
-
-[Command]
-name = "recovery"
-command = 
-time = 1
-
-; ---------------------------------------------
-; OpenMK-exclusive
-[Command]
-name = "back_z"
-command = /$B,z
-time = 7
-buffer.time = 7
-
-[Command]
-name = "back_z"
-command = B,z
-time = 7
-buffer.time = 7
-
-[Command]
-name = "back_z"
-command = B+z
-time = 7
-buffer.time = 7
-
-[Command]
-name = "back_c"
-command = /$B,c
-time = 7
-buffer.time = 7
-
-[Command]
-name = "back_c"
-command = B,c
-time = 7
-buffer.time = 7
-
-[Command]
-name = "back_c"
-command = B+c
-time = 7
-buffer.time = 7
-
-[Command]
-name = "run"
-command = /y
-time = 1
-
-[Command]
-name = "block"
-command = /b
-time = 1

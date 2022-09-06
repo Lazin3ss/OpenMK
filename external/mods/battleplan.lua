@@ -1,5 +1,5 @@
 -- BATTLEPLAN: Renders MK-like arcade ladders.
--- Author: Wreq!
+-- By OpenMK team.
 
 main.battleplan = false
 
