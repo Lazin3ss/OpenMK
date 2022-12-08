@@ -4,20 +4,23 @@
 main.battleplan = false
 
 battleplan = {}
-battleplan.ladderData = {}
 battleplan.ladderSelected = false
 battleplan.cameraFinished = false
 battleplan.portraitMoved = false
 battleplan.rivalDisplayed = false
 battleplan.fadeoutActive = false
 battleplan.finished = false
-battleplan.waitTime = {}
 
+battleplan.ladderData = {}
+battleplan.defaultRoster = {}
 battleplan.cursor = {data = {}, done_data, pos = {0, 0}}
+battleplan.waitTime = {}
+battleplan.player = {}
 battleplan.ladder = -1
 battleplan.timerSelect = -1
 battleplan.wins = 0
 local max_z = 1000
+local skip = false
 
 -- --------------------------------
 -- GENERAL FUNCTIONS
@@ -44,15 +47,23 @@ function battleplan.f_updateLadderPos(l)
 	animSetScale(battleplan.ladderData[l].base_data, z, z)
 	animSetPos(battleplan.ladderData[l].base_data, x, y)
 	-- Update ladder brackets pos
-	for i, a in ipairs(battleplan.ladderData[l].bracket_data) do
-		animSetScale(a, z, z)
-		animSetPos(a, x, y - battleplan.ladderData[l].base_px[2] * z - battleplan.ladderData[l].bracket_px[2] * z * (i - 1))
+	for i, b in ipairs(battleplan.ladderData[l].brackets) do
+		local addy = battleplan.ladderData[l].base_px[2] * z
+		for j = 1, i-1 do
+			addy = addy + battleplan.ladderData[l].brackets[j].bracket_px[2] * z
+		end
+		animSetScale(b.bracket_data, z, z)
+		animSetPos(b.bracket_data, x, y - addy)
 	end
 	-- Update ladder char cells pos
 	for i, c in ipairs(battleplan.ladderData[l].chars) do
 		if c.cell_data ~= 0 then
-			animSetScale(c.cell_data, battleplan.ladderData[l].cell_scale[1] * z, battleplan.ladderData[l].cell_scale[2] * z)
-			animSetPos(c.cell_data, x + (battleplan.ladderData[l].cell_offset[1] * z), y - battleplan.ladderData[l].base_px[2] * z - battleplan.ladderData[l].bracket_px[2] * z * (i - 1) + (battleplan.ladderData[l].cell_offset[2] * z))
+			local addy = battleplan.ladderData[l].base_px[2] * z
+			for j = 1, i-1 do
+				addy = addy + battleplan.ladderData[l].brackets[j].bracket_px[2] * z
+			end
+			animSetScale(c.cell_data, battleplan.ladderData[l].brackets[i].cell_scale[1] * z, battleplan.ladderData[l].brackets[i].cell_scale[2] * z)
+			animSetPos(c.cell_data, x + (battleplan.ladderData[l].brackets[i].cell_offset[1] * z), y - addy + (battleplan.ladderData[l].brackets[i].cell_offset[2] * z))
 		end
 	end
 end
@@ -67,7 +78,7 @@ function battleplan.f_resetLaddersPos()
 end
 
 function battleplan.f_setLadderChar(l, pos, char_ref)
-	if char_ref >= 0 and char_ref <= #main.t_selChars - 1 and pos >= 1 and pos <= battleplan.ladderData[l].size then
+	if char_ref >= 0 and char_ref <= #main.t_selChars - 1 then
 		-- Clean table data
 		if battleplan.ladderData[l].chars[pos] ~= nil and battleplan.ladderData[l].chars[pos].cell_data ~= 0 then
 			battleplan.ladderData[l].chars[pos].cell_data = 0 -- Remove memory allocation
@@ -77,8 +88,6 @@ function battleplan.f_setLadderChar(l, pos, char_ref)
 			name = main.t_selChars[char_ref + 1].name,
 			def = main.t_selChars[char_ref + 1].def,
 			cell_data = 0,
-			cell_offset = {0, 0},
-			cell_scale = {1.0, 1.0},
 			ref = char_ref
 		}
 		return true
@@ -87,10 +96,7 @@ function battleplan.f_setLadderChar(l, pos, char_ref)
 end
 
 function battleplan.f_getLadderChar(l, pos)
-	if pos >= 1 and pos <= battleplan.ladderData[l].size then
-		return battleplan.ladderData[l].chars[pos]
-	end
-	return nil
+	return battleplan.ladderData[l].chars[pos]
 end
 
 function battleplan.f_getLadderCharDef(l, pos)
@@ -105,15 +111,19 @@ function battleplan.f_createLadderRoster(l)
 	-- This function should set ladders chars via various algorhitms. Steps:
 	-- * Set chars declared on select.def
 	-- * On missing spots, fill with random chars
+	
+	-- Do for all ladders
 	if l == nil then
-		-- Do for all ladders
 		for l, d in ipairs(battleplan.ladderData) do
+			
 			for i = 1, d.size do
-				battleplan.f_setLadderChar(l, i, 3)
+				local rand = main.t_randomChars[math.random(1, #main.t_randomChars)]
+				battleplan.f_setLadderChar(l, i, rand)
 			end
 		end
+	-- Just for ladder l
 	else
-		-- Just for ladder l
+	
 	end
 end
 
@@ -147,11 +157,13 @@ function battleplan.f_selectBattleplan()
 		battleplan.f_createLadderRoster()
 		battleplan.f_resetLaddersPos()
 	end
+	-- Init common data
 	battleplan.f_setLaddersRosterCellData(false)
 	battleplan.portraitMoved = false
 	battleplan.rivalDisplayed = false
 	battleplan.fadeoutActive = false
 	battleplan.finished = false
+	skip = false
 	main.f_fadeReset('fadein', motif.battleplan)
 	main.f_playBGM(false, motif.music.battleplan_bgm, motif.music.battleplan_bgm_loop, motif.music.battleplan_bgm_volume, motif.music.battleplan_bgm_loopstart, motif.music.battleplan_bgm_loopend)
 	-- Loop behavior
@@ -224,7 +236,7 @@ function battleplan.f_updateCameraAnim()
 			if k ~= battleplan.ladder then
 				-- NOTE: Hacky way to calculate new pos x from zoom. I don't really understand projection perspective yet, so this will be changed in the future.
 				-- local add_x = (math.abs(battleplan.ladderData[battleplan.ladder].default_pos[1] - v.default_pos[1]) * 1.25) / (5 / (motif.battleplan.camera_zoom_vel / 50))
-				local add_x = (1.25 * math.abs(battleplan.ladderData[battleplan.ladder].default_pos[1] - v.default_pos[1]) * motif.battleplan.camera_zoom_vel) / 250
+				local add_x = (math.abs(battleplan.ladderData[battleplan.ladder].default_pos[1] - v.default_pos[1]) * motif.battleplan.camera_zoom_vel * 1.25) / 250
 				if v.pos[1] < x then
 					v.pos[1] = v.pos[1] - add_x
 				elseif v.pos[1] > x then
@@ -243,6 +255,7 @@ function battleplan.f_updateCameraAnim()
 		end
 	-- Camera movement finished
 	else
+		if main.f_input(main.t_players, {'pal'}) then skip = true end
 		battleplan.cameraFinished = true
 	end
 end
@@ -250,6 +263,8 @@ end
 function battleplan.f_rivalDisplay()
 	-- Scroll p1 portrait
 	if not battleplan.portraitMoved then
+		-- Move portrait
+		-- TODO: Move portrait code
 		-- Play fight sound
 		if motif.battleplan.rival_snd ~= nil then
 			main.f_playBGM(true) -- Stop battleplan BGM
@@ -288,6 +303,7 @@ function battleplan.f_drawBattleplan()
 		animDraw(battleplan.cursor.done_data)
 		animUpdate(battleplan.cursor.done_data)
 	end
+	-- draw p1 cell
 	-- draw title
 	main.txt_battleplan:draw()
 	-- hook
@@ -310,10 +326,10 @@ function battleplan.f_drawLadders()
 		animDraw(l.base_data)
 		animUpdate(l.base_data)
 		-- Draw ladder brackets
-		for n, a in ipairs(l.bracket_data) do
+		for n, b in ipairs(l.brackets) do
 			-- Draw bracket
-			animDraw(a)
-			animUpdate(a)
+			animDraw(b.bracket_data)
+			animUpdate(b.bracket_data)
 			-- Draw bracket cell
 			local cell_data = battleplan.f_getLadderCharCell(k, n)
 			if cell_data ~= 0 then
@@ -375,6 +391,23 @@ local function f_createSprData(t, v)
 	return sprData
 end
 
+-- Function: Fills a generic motif section with values from a specifed table where missing
+-- Preffix argument lets you do it in a certain key pattern
+function f_motifFillSection(section, t, preffix)
+	if preffix == nil then preffix = "" end
+	for k, v in pairs(t) do
+		if motif[section][preffix .. k] == nil or type(v) ~= type(motif[section][preffix .. k]) then
+			motif[section][preffix .. k] = v
+		elseif type(v) == "table" then
+			for k2, v2 in ipairs(motif[section][preffix .. k]) do
+				if v2 == nil then
+					motif[section][preffix .. k][k2] = v[k2]
+				end
+			end
+		end
+	end
+end
+
 -- TODO: Rewrite this function after 0.99 releases
 function battleplan.f_setBaseBattleplanInfo()
 	-- Default value tables
@@ -399,11 +432,11 @@ function battleplan.f_setBaseBattleplanInfo()
 		ladders = 1,
 		startladder = 1,
 		timer_count = 240,
-		cursor_spr = {},
 		cursor_anim = -1,
+		cursor_spr = {},
+		cursor_offset = {0, 0},
 		cursor_facing = 1,
 		cursor_scale = {1.0, 1.0},
-		cursor_offset = {0, 0},
 		cursor_move_snd = {100,0},
 		cursor_done_snd = {100,0},
 		cursor_done_spr = {},
@@ -411,6 +444,7 @@ function battleplan.f_setBaseBattleplanInfo()
 		cursor_done_facing = 1,
 		cursor_done_scale = {1.0, 1.0},
 		cursor_done_offset = {0, 0},
+		cursor_done_wait = 60,
 		camera_center_vel = 1.5,
 		camera_center_wait = 60,
 		camera_zoom_vel = 0.1,
@@ -420,23 +454,84 @@ function battleplan.f_setBaseBattleplanInfo()
 		camera_scroll_vel = 3,
 		camera_scroll_offsety = 0
 	}
+	-- Table with ladder default params
+	local t_ladderDefaultParams = {
+		size = 5,
+		pos = {0, 0, 1.0},
+		brackets = {1, 1, 1, 1, 1},
+		name_text = "",
+		name_font = {0, 0, 0, 0, 0, 0, 0},
+		name_offset = {0, 0},
+		name_scale = {1.0, 1.0},
+		base_anim = -1,
+		base_spr = {},
+		base_offset = {0, 0},
+		base_facing = 1,
+		base_scale = {1.0, 1.0}
+	}
+	-- Table with bracketType definition default params
+	local t_bracketDefaultParams = {
+		type = "single",
+		size = 1,
+		order = -1,
+		hidden = 0,
+		cond = "",
+		bg_anim = -1,
+		bg_spr = {},
+		bg_offset = {0, 0},
+		bg_facing = 1,
+		bg_scale = {1.0, 1.0},
+		portrait_anim = -1,
+		portrait_spr = {},
+		portrait_offset = {0, 0},
+		portrait_facing = 1,
+		portrait_scale = {1.0, 1.0}
+	}
+	-- Search total amount of ladders and brackets definitions
+	local ladderNum = 0
+	local bracketNum = 0
+	local i = 0
+	while true do
+		if i == ladderNum then
+			for k, _ in pairs(t_ladderDefaultParams) do
+				if motif.battleplan['ladder' .. ladderNum + 1 .. '_' .. k] ~= nil then
+					ladderNum = ladderNum + 1
+					break
+				end
+			end
+		end
+		if i == bracketNum then
+			for k, _ in pairs(t_bracketDefaultParams) do
+				if motif.battleplan['bracket' .. bracketNum + 1 .. '_' .. k] ~= nil then
+					bracketNum = bracketNum + 1
+					break
+				end
+			end
+		end
+		if i > ladderNum and i > bracketNum then break end
+		i = i + 1
+	end
+	if ladderNum == 0 then ladderNum = 1 end
+	if bracketNum == 0 then bracketNum = 1 end
+	if motif.battleplan.ladders ~= nil then motif.battleplan.ladders = ladderNum end
+	
 	
 	-- Set default values in motif table
-	for k, v in pairs(t_bgmDefaultParams) do
-		if motif.music[k] == nil then
-			motif.music[k] = v
-		elseif k ~= 'battleplan_bgm' then
-			motif.music[k] = tonumber(motif.music[k])
-		end
+	f_motifFillSection("music", t_bgmDefaultParams)
+	f_motifFillSection("battleplan", t_battleplanDefaultParams)
+	for i = 1, ladderNum do
+		f_motifFillSection("battleplan", t_ladderDefaultParams, "ladder" .. i .. "_")
 	end
-	for k, v in pairs(t_battleplanDefaultParams) do
-		if motif.battleplan[k] == nil then motif.battleplan[k] = v end
+	for i = 1, bracketNum do
+		f_motifFillSection("battleplan", t_bracketDefaultParams, "bracket" .. i .. "_")
 	end
 	-- Debug printing
-	--if main.debugLog then main.f_printTable(motif, "debug/t_motif.txt") end
+	if main.debugLog then main.f_printTable(motif.battleplan, "debug/t_motif_battleplan.txt") end
 end
 
 function battleplan.f_initMotifData()
+	-- Set Base Info
+	battleplan.f_setBaseBattleplanInfo()
 	-- bgclearcolor
 	if motif.battleplanbgdef.bgclearcolor == nil then motif.battleplanbgdef.bgclearcolor = {0, 0, 0} end
 	-- Music
@@ -453,82 +548,71 @@ function battleplan.f_initMotifData()
 	battleplan.cursor.done_data = f_createSprData(motif.battleplan, {s = 'cursor_done_'})
 	-- Camera Wait Time
 	battleplan.waitTime = {motif.battleplan.cursor_done_wait, motif.battleplan.camera_center_wait, motif.battleplan.camera_zoom_wait, motif.battleplan.rival_wait}
+	-- Brackets
+	battleplan.f_initBracketData()
 	-- Ladders
 	battleplan.f_initLadderData()
+	-- Player
+	--battleplan.
+end
+
+function battleplan.f_initBracketData()
+
 end
 
 function battleplan.f_initLadderData()
-	-- Table with ladder default params
-	local t_ladderDefaultParams = {
-		size = 5,
-		pos = {0, 0, 1.0},
-		name_text = "",
-		name_font = {0, 0, 0, 0, 0, 0, 0},
-		name_offset = {0, 0},
-		name_scale = {1.0, 1.0},
-		base_anim = -1,
-		base_spr = {},
-		base_offset = {0, 0},
-		base_facing = 1,
-		base_scale = {1.0, 1.0},
-		bracket_anim = -1,
-		bracket_spr = {},
-		bracket_offset = {0, 0},
-		bracket_facing = 1,
-		bracket_scale = {1.0, 1.0},
-		portrait_scale = {1.0, 1.0},
-		portrait_offset = {20, 20}
-	}
-	
 	for i = 1, motif.battleplan.ladders do
-		local l = 'ladder' .. i
-		-- Create temp ladder
-		for k, v in pairs(t_ladderDefaultParams) do
-			if motif.battleplan[l .. '_' .. k] ~= nil then
-				if type(v) == "table" and type(motif.battleplan[l .. '_' .. k]) == "table" then
-					for k2, v2 in ipairs(motif.battleplan[l .. '_' .. k]) do
-						if v2 == nil then
-							motif.battleplan[l .. '_' .. k][k2] = v[k2]
-						end
-					end
-				end
-			else
-				motif.battleplan[l .. '_' .. k] = v
-			end
-		end
+		local l = 'ladder' .. i .. '_'
 		-- Add ladder info to ladderData table
 		table.insert(battleplan.ladderData, {
-			name = motif.battleplan[l .. '_' .. 'name_text'],
-			size = motif.battleplan[l .. '_' .. 'size'],
-			pos = main.f_tableCopy(motif.battleplan[l .. '_' .. 'pos']),
-			default_pos = main.f_tableCopy(motif.battleplan[l .. '_' .. 'pos']),
+			name = motif.battleplan[l .. 'name_text'],
+			size = motif.battleplan[l .. 'size'],
+			pos = main.f_tableCopy(motif.battleplan[l .. 'pos']),
+			default_pos = main.f_tableCopy(motif.battleplan[l .. 'pos']),
+			brackets = {},
 			chars = {},
 			base_px = {},
-			bracket_px = {},
 			ladder_px = {},
-			base_data = f_createSprData(motif.battleplan, {s = l .. '_' .. 'base_'}),
-			bracket_data = {},
-			font_data = main.f_createTextImg(motif.battleplan, l .. '_' .. 'name'),
-			cell_offset = motif.battleplan[l .. '_' .. 'portrait_offset'],
-			cell_scale = motif.battleplan[l .. '_' .. 'portrait_scale']
+			base_data = f_createSprData(motif.battleplan, {s = l .. 'base_'}),
+			font_data = main.f_createTextImg(motif.battleplan, l .. 'name')
 		})
+		-- Init base spr data
+		local baseInfo = animGetSpriteInfo(battleplan.ladderData[i].base_data)
+		battleplan.ladderData[i].base_px = {baseInfo.Size[1], baseInfo.Size[2]}
+		-- Set inital ladder dimensions
+		battleplan.ladderData[i].ladder_px = {baseInfo.Size[1], baseInfo.Size[2]}
 		-- Add brackets data to ladderData table
 		for j = 1, battleplan.ladderData[i].size do
-			table.insert(battleplan.ladderData[i].bracket_data, f_createSprData(motif.battleplan, {s = l .. '_' .. 'bracket_'}))
+			-- Choose bracket type number
+			bracketNo = 1
+			if j < #motif.battleplan[l .. 'brackets'] then
+				bracketNo = motif.battleplan[l .. 'brackets'][j]
+			end
+			local t = {
+				bracket_data = f_createSprData(motif.battleplan, {s = 'bracket' .. bracketNo .. '_bg_'}),
+				bracket_px = {},
+				cell_offset = motif.battleplan['bracket' .. bracketNo .. '_portrait_offset'],
+				cell_scale = motif.battleplan['bracket' .. bracketNo .. '_portrait_scale']
+			}
+			local bracketInfo = animGetSpriteInfo(t.bracket_data)
+			t.bracket_px = {bracketInfo.Size[1], bracketInfo.Size[2]}
+			table.insert(battleplan.ladderData[i].brackets, t)
+			-- Update ladder dimensions
+			battleplan.ladderData[i].ladder_px[1] = math.max(battleplan.ladderData[i].ladder_px[1], bracketInfo.Size[1])
+			battleplan.ladderData[i].ladder_px[2] = battleplan.ladderData[i].ladder_px[2] + bracketInfo.Size[2]
 		end
-		-- Init various spr-related data
-		local baseInfo = animGetSpriteInfo(battleplan.ladderData[i].base_data)
-		local bracketInfo = animGetSpriteInfo(battleplan.ladderData[i].bracket_data[1])
-		battleplan.ladderData[i].base_px = {baseInfo.Size[1], baseInfo.Size[2]}
-		battleplan.ladderData[i].bracket_px = {bracketInfo.Size[1], bracketInfo.Size[2]}
-		battleplan.ladderData[i].ladder_px = {math.max(baseInfo.Size[1], bracketInfo.Size[1]), baseInfo.Size[2] + (bracketInfo.Size[2] * battleplan.ladderData[i].size)}
 	end
 	-- Update start ladder
-	if motif.battleplan.startladder < 1 then 
-		motif.battleplan.startladder = 1 
-	elseif motif.battleplan.startladder > #battleplan.ladderData then
-		motif.battleplan.startladder = #battleplan.ladderData
-	end
+	motif.battleplan.startladder = math.max(1, math.min(motif.battleplan.startladder, #battleplan.ladderData))
+	-- Add default chars to roster reference (TODO)
+	-- for r, c in ipairs(main.t_selChars) do
+		-- if c.char ~= nil then
+			-- for k, v in pairs(c) do
+				
+			-- end
+		-- end
+		-- battleplan.defaultRoster[]
+	-- end
 	-- Debug printing
 	if main.debugLog then main.f_printTable(battleplan.ladderData, "debug/t_ladderdata.txt") end
 end
@@ -537,8 +621,6 @@ local function f_resetBattleplan()
 	battleplan.ladderSelected = false
 end
 
-battleplan.f_setBaseBattleplanInfo()
 battleplan.f_initMotifData()
 
 hook.add("start.f_selectScreen", "resetBattleplan", f_resetBattleplan)
-
