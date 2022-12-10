@@ -21,6 +21,7 @@ battleplan.timerSelect = -1
 battleplan.wins = 0
 local max_z = 1000
 local skip = false
+local accel = 0
 
 -- --------------------------------
 -- GENERAL FUNCTIONS
@@ -164,6 +165,7 @@ function battleplan.f_selectBattleplan()
 	battleplan.fadeoutActive = false
 	battleplan.finished = false
 	skip = false
+	accel = 0
 	main.f_fadeReset('fadein', motif.battleplan)
 	main.f_playBGM(false, motif.music.battleplan_bgm, motif.music.battleplan_bgm_loop, motif.music.battleplan_bgm_volume, motif.music.battleplan_bgm_loopstart, motif.music.battleplan_bgm_loopend)
 	-- Loop behavior
@@ -209,54 +211,60 @@ end
 
 function battleplan.f_updateCameraAnim()
 	-- Get current frame pos values for selected ladder
-	local x = battleplan.ladderData[battleplan.ladder].pos[1]
-	local y = battleplan.ladderData[battleplan.ladder].pos[2]
-	local z = battleplan.ladderData[battleplan.ladder].pos[3]
-	-- FIRST PHASE: Center selected ladder on the screen
-	if x ~= motif.info.localcoord[1] / 2 then
-		for k, v in ipairs(battleplan.ladderData) do
+	local ladderSelected = battleplan.ladderData[battleplan.ladder]
+	local x = ladderSelected.pos[1]
+	local y = ladderSelected.pos[2]
+	local z = ladderSelected.pos[3]
+	for n, l in ipairs(battleplan.ladderData) do
+		-- FIRST PHASE: Center selected ladder on the screen
+		if x ~= motif.info.localcoord[1] / 2 then
 			if math.abs(motif.info.localcoord[1] / 2 - x) < motif.battleplan.camera_center_vel then
-				v.pos[1] = v.pos[1] + motif.info.localcoord[1] / 2 - x
+				l.pos[1] = l.pos[1] + motif.info.localcoord[1] / 2 - x
 			elseif x > motif.info.localcoord[1] / 2 then
-				v.pos[1] = v.pos[1] - motif.battleplan.camera_center_vel
+				l.pos[1] = l.pos[1] - motif.battleplan.camera_center_vel
 			elseif x < motif.info.localcoord[1] / 2 then
-				v.pos[1] = v.pos[1] + motif.battleplan.camera_center_vel
+				l.pos[1] = l.pos[1] + motif.battleplan.camera_center_vel
 			end
-			battleplan.f_updateLadderPos(k)
-		end
-	elseif battleplan.waitTime[2] > 0 then
-		 battleplan.waitTime[2] =  battleplan.waitTime[2] - 1
-	-- SECOND PHASE: Zoom selected ladder
-	elseif z > 0 then
-		for k, v in ipairs(battleplan.ladderData) do
-			v.pos[3] = math.max(v.pos[3] - motif.battleplan.camera_zoom_vel, 0)
-			local angle_y = battleplan.ladderData[battleplan.ladder].ladder_px[2] + motif.battleplan.camera_zoom_offsety
-			v.pos[2] = ((v.default_pos[2] - angle_y) / v.default_pos[3]) * v.pos[3] + angle_y
+		elseif battleplan.waitTime[2] > 0 then
+			battleplan.waitTime[2] = battleplan.waitTime[2] - 1
+			break
+		-- SECOND PHASE: Zoom selected ladder
+		elseif z > 0 then
+			local angle_y = ladderSelected.ladder_px[2] + motif.battleplan.camera_zoom_offsety
+			local curve_z = z
+			if ladderSelected.default_pos[2] - ladderSelected.ladder_px[2] * zScaleMul(ladderSelected.default_pos[3]) > motif.battleplan.camera_zoom_curve_cutoff then
+				curve_z = -z
+			end
+			l.pos[3] = math.max(l.pos[3] - motif.battleplan.camera_zoom_vel - accel, 0)
+			l.pos[2] = (((l.default_pos[2] - angle_y) / l.default_pos[3]) * l.pos[3] + angle_y) + math.sin((curve_z / l.default_pos[3]) * math.pi) * 90 * (motif.battleplan.camera_zoom_curve)
 			-- Move other ladders out of the way
-			if k ~= battleplan.ladder then
+			if l ~= ladderSelected then
 				-- NOTE: Hacky way to calculate new pos x from zoom. I don't really understand projection perspective yet, so this will be changed in the future.
-				-- local add_x = (math.abs(battleplan.ladderData[battleplan.ladder].default_pos[1] - v.default_pos[1]) * 1.25) / (5 / (motif.battleplan.camera_zoom_vel / 50))
-				local add_x = (math.abs(battleplan.ladderData[battleplan.ladder].default_pos[1] - v.default_pos[1]) * motif.battleplan.camera_zoom_vel * 1.25) / 250
-				if v.pos[1] < x then
-					v.pos[1] = v.pos[1] - add_x
-				elseif v.pos[1] > x then
-					v.pos[1] = v.pos[1] + add_x
+					-- NOTE 2: I don't remember what this was for, but I'll let it here anyway :P
+					-- local add_x = (math.abs(ladderSelected.default_pos[1] - l.default_pos[1]) * 1.25) / (5 / (motif.battleplan.camera_zoom_vel / 50))
+				local add_x = math.abs(ladderSelected.default_pos[1] - l.default_pos[1]) * (motif.battleplan.camera_zoom_vel + accel) * 0.005 -- * 1.25 / 250
+				if l.pos[1] < x then
+					l.pos[1] = l.pos[1] - add_x
+				elseif l.pos[1] > x then
+					l.pos[1] = l.pos[1] + add_x
 				end
 			end
-			battleplan.f_updateLadderPos(k)
+			if motif.battleplan.camera_zoom_accel ~= 0 then
+				accel = accel + motif.battleplan.camera_zoom_accel / 100
+			end
+		elseif battleplan.waitTime[3] > 0 then
+			battleplan.waitTime[3] =  battleplan.waitTime[3] - 1
+			break
+		-- THIRD PHASE: Scroll selected ladder
+		elseif not main.f_input(main.t_players, {'pal'}) and y > motif.info.localcoord[2] then
+			l.pos[2] = math.max(l.pos[2] - motif.battleplan.camera_scroll_vel, motif.info.localcoord[2])
+		-- Camera movement finished
+		else
+			if main.f_input(main.t_players, {'pal'}) then skip = true end
+			battleplan.cameraFinished = true
+			break
 		end
-	elseif battleplan.waitTime[3] > 0 then
-		battleplan.waitTime[3] =  battleplan.waitTime[3] - 1
-	-- THIRD PHASE: Scroll selected ladder
-	elseif not main.f_input(main.t_players, {'pal'}) and y > motif.info.localcoord[2] then
-		for k, v in ipairs(battleplan.ladderData) do
-			v.pos[2] = math.max(v.pos[2] - motif.battleplan.camera_scroll_vel, motif.info.localcoord[2])
-			battleplan.f_updateLadderPos(k)
-		end
-	-- Camera movement finished
-	else
-		if main.f_input(main.t_players, {'pal'}) then skip = true end
-		battleplan.cameraFinished = true
+		battleplan.f_updateLadderPos(n)
 	end
 end
 
@@ -448,9 +456,11 @@ function battleplan.f_setBaseBattleplanInfo()
 		camera_center_vel = 1.5,
 		camera_center_wait = 60,
 		camera_zoom_vel = 0.1,
-		camera_zoom_wait = 30,
+		camera_zoom_accel = 0,
 		camera_zoom_curve = 0.1,
+		camera_zoom_curve_cutoff = 40,
 		camera_zoom_offsety = 0,
+		camera_zoom_wait = 30,
 		camera_scroll_vel = 3,
 		camera_scroll_offsety = 0
 	}
