@@ -4,82 +4,90 @@
 
 # ---------------------------------------------
 # Run
-if !const(OpenMK.Char.DisableRun) { # If it isn't disabled.
-	if power > 0 && command = "run" && command = "holdfwd" && command != "holdback" && command != "holdup" && stateno != const(StateRunForward) && ctrl && stateno != const(StateWin) {
-		if statetype = S {
-			changestate{value: const(StateRunForward)}
+if const(OpenMK.Char.EnableRun) > 0 { # Only if it's enabled.
+	if power > 0 && command = "run" && command = "holdfwd" && command != "holdback" && command != "holdup" && stateNo != const(StateRunForward) && ctrl && stateNo != const(StateWin) {
+		if stateType = S {
+			selfState{value: const(StateRunForward)}
 		}
 	}
 }
 
 # ---------------------------------------------
 # Block
-if ctrl && stateno != const(StateWin) && stateno != [const(StateGuard_start),const(StateGuard_end)] && command = "block" {
-	if statetype = S || statetype = C {
-		changestate{value: const(StateGuard_start)}
+if ctrl && stateNo != const(StateWin) && stateNo != [const(StateGuard_start),const(StateGuard_end)] && command = "block" {
+	if stateType = S || stateType = C {
+		selfState{value: const(StateGuard_start)}
 	}
 }
 
 # ---------------------------------------------
 # Back+Attack ones
 if command = "back_z" { # Roundhouse Kick
-	if statetype = S && ctrl && stateno != const(StateWin) {
-		changestate{value: const(StateRoundhouseKick)}
+	if stateType = S && ctrl && stateNo != const(StateWin) {
+		selfState{value: const(StateRoundhouseKick)}
 	}
 } else if command = "back_c" { # Sweep Kick
-	if statetype = S && ctrl && stateno != const(StateWin) {
-		changestate{value: const(StateSweep)}
+	if stateType = S && ctrl && stateNo != const(StateWin) {
+		selfState{value: const(StateSweep)}
 	}
 }
 
 # ---------------------------------------------
 # Punches
-if statetype = S && ctrl && stateno != const(StateWin) {
+if stateType = S && ctrl && stateNo != const(StateWin) {
 	if command = "x" {
-		changestate{value: const(StateHighPunchI)}
+		selfState{value: const(StateHighPunchI)}
 	} else if command = "a" {
-		changestate{value: const(StateLowPunchI)}
+		selfState{value: const(StateLowPunchI)}
 	}
 }
 
 # ---------------------------------------------
 # Kicks
-if statetype = S && ctrl && stateno != const(StateWin) {
+if stateType = S && ctrl && stateNo != const(StateWin) {
 	if command = "z" {
-		changestate{value: const(StateHighKick)}
+		selfState{value: const(StateHighKick)}
 	} else if command = "c" {
-		changestate{value: const(StateLowKick)}
+		selfState{value: const(StateLowKick)}
 	}
 }
 
 # ---------------------------------------------
 # Crouch Attacks
-if statetype = C && ctrl && stateno != const(StateWin) {
+if stateType = C && ctrl && stateNo != const(StateWin) {
 	if command = "z" { # Crouch HK
-		changestate{value: const(StateCrouchHighKick)}
+		selfState{value: const(StateCrouchHighKick)}
 	} else if command = "x" { # Uppercut
-		changestate{value: const(StateUppercut)}
+		selfState{value: const(StateUppercut)}
 	} else if command = "a" { # Crouch LP
-		changestate{value: const(StateCrouchLowPunch)}
+		if const(OpenMK.Char.CrouchAttacks) = 0 {
+			selfState{value: const(StateUppercut)}
+		} else if const(OpenMK.Char.CrouchAttacks) = 1 {
+			selfState{value: const(StateCrouchLowPunch)}
+		}
 	} else if command = "c" { # Crouch LK
-		changestate{value: const(StateCrouchLowKick)}
+		if const(OpenMK.Char.CrouchAttacks) = 0 {
+			selfState{value: const(StateCrouchHighKick)}
+		} else if const(OpenMK.Char.CrouchAttacks) = 1 {
+			selfState{value: const(StateCrouchLowKick)}
+		}
 	}
 }
 
 # ---------------------------------------------
 # Air Kicks
 if vel x = 0 { # Neutral one
-	if statetype = A && ctrl && stateno != const(StateWin) && (command = "c" || command = "z") {
-		changestate{value: const(StateAirKick)}
+	if stateType = A && ctrl && stateNo != const(StateWin) && (command = "c" || command = "z") {
+		selfState{value: const(StateAirKick)}
 	}
 } else { # Leaping one
-	if statetype = A && ctrl && stateno != const(StateWin) && (command = "c" || command = "z") {
-		changestate{value: const(StateLeapKick)}
+	if stateType = A && ctrl && stateNo != const(StateWin) && (command = "c" || command = "z") {
+		selfState{value: const(StateLeapKick)}
 	}
 }
-	
+
 # ---------------------------------------------
 # Air Punch
-if (command = "x" || command = "a") && statetype = A && ctrl && stateno != const(StateWin) {
-	changestate{value: const(StateAirPunch)}
+if (command = "x" || command = "a") && stateType = A && ctrl && stateNo != const(StateWin) {
+	selfState{value: const(StateAirPunch)}
 }

@@ -4,37 +4,40 @@
 ; OPEN MORTAL KOMBAT
 ; ---------------------------------------------
 
-OpenMK.Enable.Char = 0
+OpenMK.Char.Enabled = 0
 ;Enables Mortal Kombat functionality for current char. If not declared, character will behave like common Mugen/Ikemen (and ignore most of OpenMK-specific constants and/or maps).
 ; Will probably be deprecated?
 
 ; ---------------------------------------------
 ; Character behavior
-OpenMK.Char.DisableRun = 0
-; 1 = Disables Run mechanic from Mortal Kombat 3. When 0 or not declared, it will be enabled.
+OpenMK.Char.EnableRun = 0
+; 1 = Enables Run mechanic from Mortal Kombat 3. When 0 or not declared, it will be disabled.
 
-OpenMK.Char.Kombos = 0
+OpenMK.Char.EnableKombos = 0
 ;1 = Enables Dial-A-Kombos like MK3/UMK3, 2 = Enables MK4-like global combos. When 0 or not declared, character can't do button combos, instead it will only do a close hit, like MK1/MK2.
 
 OpenMK.Char.RoundhouseKick = 0
-;1 = Roundhouse Kicks works like MK1, 2 = Roundhouse has MK2 physics (camera doesn't shake by hit), 3 = Roundhouse has MK3 physics (camera shakes upon hit). When 0 or not declared, Roundhouse Kick behaves like MK3.
+; 1 = Roundhouse has MK2 physics (camera doesn't shake by hit), 2 = Roundhouse has MK3 physics (camera shakes upon hit). When 0 or not declared, Roundhouse Kick behaves like MK1.
 
-OpenMK.Char.Stumble = 0
-;1 = Character will stumble after being hit with punches various times (like MK1). If not declared, character will just be pushed back like MK2 onwards.
+OpenMK.Char.UppercutFreeze = 0
+; 1 = Freeze time like MK2, 2 = Freeze time like MK3. When 0 or not declared, freeze time is like MK1.
+
+OpenMK.Char.PunchLimiter = 0
+; 1 = Character will just be pushed back like MK2 onwards. If not declared, character will stumble after being hit with punches various times like MK1.
 
 OpenMK.Char.SweepFix = 0
 ; 1 = It will patch the infinite sweep problem. When 0 or not declared, the infinite is kept.
 
 OpenMK.Char.CrouchAttacks = 0
-; 1 = Crouch attacks will work like MK1. 2 = Crouch LP and LK will be added as in MK2. When 0 or not declared, it will behave like MK3.
+; 1 = Crouch LP and LK will be added as in MK2 onwards. When 0 or not declared, it will behave like MK1.
 
 ; ---------------------------------------------
 ; Others
 OpenMK.Aggressor.Enabled = 0
-;Enables/Disables the use of aggressor on this character
+;Enables/Disables the use of aggressor on this character.
 
 OpenMK.TagBonesExplosion = 0
-;If declared, character will explode when being defeated in tag mode
+;If declared, character will explode when being defeated in tag mode.
 
 ; ---------------------------------------------
 ; Attack Anims
@@ -73,8 +76,7 @@ StateCrouchLowKick = 430
 StateAirKick = 600
 StateAirPunch = 610
 StateLeapKick = 620
-StateConnectedKick = 630
-
+StateConnectedAirAttack = 630
 
 ; ---------------------------------------------
 ; COMMON CONSTANTS
@@ -141,7 +143,7 @@ AnimGuardingAHit_crouch = 151
 AnimGuardingAHit_air = 152
 AnimLose = 170 ;opt
 AnimTimeOverDrawGame = 175 ;opt
-AnimWin = 180 ;opt
+AnimWin = 181 ;opt
 AnimIntro = 190 ;opt
 AnimTaunt = 195 ;opt
 AnimStandOrAirHitHigh_light = 5000

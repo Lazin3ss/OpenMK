@@ -7,43 +7,33 @@
 
 # Used to call a character voicebyte.
 [Function CharVoice(bank, index)]
-playsnd{value: s$bank, $index; channel: 0}
+playSnd{value: s $bank, $index; channel: 0}
 
 # Used to call a character sound effect.
 [Function CharSFX(bank, index)]
-playsnd{value: s$bank, $index; channel: 1}
+playSnd{value: s $bank, $index; channel: 1}
 
 # Used to call a common.snd sound.
 [Function ComSound(bank, index)]
-playsnd{value: f$bank, $index; channel: 2}
+playSnd{value: f $bank, $index; channel: 2}
 
-# To end a state.
-[Function StateEnd(state)]
-changestate{value: $state; ctrl: 1}
-
-# To apply a camera shake.
-[Function Shake(time, freq, ampl)]
-envshake{
-	time: $time;
-	freq: $freq;
-	ampl: $ampl
-}
-
+# Transition for block.
 [Function HiToLoAndLoToHi()]
-if command = "holddown" && statetype = S {
-	statetypeset{statetype: C; physics: C}
-} else if statetype = C {
-	statetypeset{statetype: S; physics: S}
+if command = "holddown" && stateType = S {
+	stateTypeSet{stateType: C; physics: C}
+} else if stateType = C {
+	stateTypeSet{stateType: S; physics: S}
 }
 
+# Stop blocking!
 [Function StopGuarding()]
 if command != "block" {
-	changestate{value: const(StateGuard_end)}
+	changeState{value: const(StateGuard_end)}
 }
 
 # High punch hitbox.
 [Function PunchHitboxH()]
-hitdef{
+hitDef {
 	attr: S,NA;
 	hitflag: MAF;
 	guardflag: MA;
@@ -76,7 +66,7 @@ hitdef{
 
 # Low punch hitbox.
 [Function PunchHitboxL()]
-hitdef{
+hitDef {
 	attr: S,NA;
 	hitflag: MAF;
 	guardflag: MA;
@@ -110,18 +100,27 @@ hitdef{
 # This calls buffer commands for all punches.
 [Function PunchBuffer()]
 
+# Debug.
+#displayToClipboard{text: "punches so far = %f"; params: map(consecutivePunchCount)}
+
+# Reset punch variable.
+# TODO: Unfinished, to improve later.
+#if (time = 0 && prevStateNo != [const(StateHighPunchI),const(StateLowPunchII)]) {
+#	map(consecutivePunchCount) := 0;
+#}
+
 # Reset command buffer variable.
-if time < 2 {
+if time < 1 {
 	map(commandBuffer) := 0;
 }
 
 # Buffer the next punch.
 if command = "x" { # High Punch
-	if time = [2,13] {
+	if time = [1,13] {
 		map(commandBuffer) := 1;
 	}
 } else if command = "a" { # Low Punch
-	if time = [2,13] {
+	if time = [1,13] {
 		map(commandBuffer) := 2;
 	}
 } else if command = "b" || command = "run" || command = "y" || command = "block" { # Jab Cancel
@@ -131,31 +130,36 @@ if command = "x" { # High Punch
 }
 
 # Jab cancel animation.
-if map(commandBuffer) = 3 && animelemtime(4) = 2 {
+if map(commandBuffer) = 3 && animElemTime(4) = 2 {
 	changeAnim{value: anim; elem: 5}
 }
+
+# Keep track of punches dealt.
+# This will trigger the lock system.
+# TODO: Unfinished, to improve later.
+#if moveContact = 1 {
+#	map(consecutivePunchCount) := map(consecutivePunchCount) + 1;
+#}
 
 # ---------------------------------------------
 # BASIC MOVES
 # ---------------------------------------------
 
 # OpenMK common content
-[Statedef -2]
+[StateDef -2]
 
 # This constant enables common things for MK.
 if const(OpenMK.Char.Enabled) = 1 {
-	# Disable block as default.
-	assertspecial{flag: nostandguard; flag2: nocrouchguard; flag3: noairguard}
-	# Disable K.O. content.
-	assertspecial{flag: nokovelocity; flag2: nokosnd}
+	assertSpecial{flag: nostandguard; flag2: nocrouchguard; flag3: noairguard}
+	assertSpecial{flag: nokovelocity; flag2: nokosnd}
 
 	# ---------------------------------------------
 	# Run bar logic
 	
-	# Map "leaveRunState" is defined when you leave the run state.
+	# Variable 1 is defined when you leave the run state.
 	# If player has exited run state without them
 	# actually wanting to, variable will be forced to 1.
-	if movetype = h || !map(leaveRunState) && stateno != 107 {
+	if moveType = H || !map(leaveRunState) && stateNo != const(StateRun) {
 		map(leaveRunState) := 1;
 	}
 
@@ -164,45 +168,39 @@ if const(OpenMK.Char.Enabled) = 1 {
 	if map(leaveRunState) {
 		map(runReload) := map(runReload) - 20;
 	}
-	
+
 	# Limit it so it doesn't go below 0.
 	if map(runReload) <= 0 {
 		map(runReload) := 0;
 	}
 
 	# When reload time hits 0, refill the bar again 'til it's max.
-	if numexplod(10000) = 0 && var(1) = 1 && power < powermax {
+	if numExplod(10000) = 0 && map(leaveRunState) = 1 && power < powerMax {
 		if map(runReload) = 0 {
-			poweradd{value: 20}
+			powerAdd{value: 20}
 		}
 	}
 }
 
 # ---------------------------------------------
 # Stand
-[Statedef const(StateStand);
-type: S;
-physics: S;
-sprpriority: 0;]
+[StateDef const(StateStand); type: S; physics: S; sprPriority: 0;]
 
-# Reset any angledraw's.
-angledraw{value: 0}
-
-# Change anim.
-if cond(anim = const(AnimStandTurning), animtime = 0, anim != const(AnimStanding)) {
-	changeanim{value: const(AnimStanding)}
+# Change animation depending of turn state.
+if cond(anim = const(AnimStandTurning), animTime = 0, anim != const(AnimStanding)) {
+	changeAnim{value: const(AnimStanding)}
 }
 
 # Stop falling down.
 if time = 0 {
-	velset{y: 0}
-	posset{y: 0}
+	velSet{y: 0}
+	posSet{y: 0}
 }
 
 # Friction stuff.
-if time = 4 || abs(vel x) < ifelse(majorversion = 1,
+if time = 4 || abs(vel x) < cond(majorVersion = 1,
 	const(movement.stand.friction.threshold), 2) {
-	velset{x: 0}
+	velSet{x: 0}
 }
 
 # If dead.
@@ -212,16 +210,8 @@ if !alive {
 
 # ---------------------------------------------
 # Jump Start
-[Statedef const(StateJumpStart);
-type: S;
-physics: S;
-anim: const(AnimJumpStart_onGround);
-ctrl: 0;
-sprpriority: 1;
-facep2: 1;]
-
-# Reset any angledraw's.
-angledraw{value: 0}
+[StateDef const(StateJumpStart); type: S; physics: S; anim: const(AnimJumpStart_onGround);
+ctrl: 0; sprPriority: 1; facep2: 1;]
 
 # Set direction for movement.
 if time = 0 {
@@ -241,58 +231,55 @@ if command = "holdfwd" {
 velSet{x: $x; y: const(velocity.jump.y)}
 
 # End of state.
-changeState{value: const(StateJumpUp); ctrl: 1}
+selfState{value: const(StateJumpUp); ctrl: 1}
 
 # ---------------------------------------------
 # Jump Land
-[Statedef const(StateJumpLand);
-type: S;
-physics: S;
-ctrl: 0;
+[StateDef const(StateJumpLand); type: S; physics: S; ctrl: 0;
 anim: const(AnimJumpLanding);]
-
-# Reset any angledraw's.
-angledraw{value: 0}
 
 # Stop moving.
 if time = 0 {
-	velset{x: 0; y: 0}
-	posset{y: 0}
+	velSet{x: 0; y: 0}
+	posSet{y: 0}
 } else if time > 3 { # Apply control
-	ctrlset{value: 1}
+	ctrlSet{value: 1}
 }
 
 # Turn around to see enemy player.
-if p2dist x < 0 && time = 0 {
+if p2Dist x < 0 && time = 0 {
 	turn{}
 }
 
 # End of state.
-if animtime = 0 {
-	call StateEnd(const(StateStand));
+if animTime = 0 {
+	selfState{value: const(StateStand); ctrl: 1}
 }
 
 # ---------------------------------------------
 # Run forward
-[Statedef const(StateRunForward);
-type: S;
-physics: S;
-anim: const(AnimRunFwdOrHopForward);
-sprpriority: 1;]
+[StateDef const(StateRunForward); type: S; physics: S;
+sprPriority: 1;]
+
+# Check if animation 100 exists.
+# Otherwise, use normal animation as failsafe.
+# Meant to mimic Playstation's MK Trilogy MK1/MK2 chars.
+# TODO: Is this truly needed?
+if !selfAnimExist(const(AnimRunFwdOrHopForward)) {
+	changeAnim{value: const(AnimWalkingForwards)}
+} else {
+	changeAnim{value: const(AnimRunFwdOrHopForward)}
+}
 
 # Limit some movements.
 # In MK3 you can't crouch during walk and run.
-assertspecial{
-	flag: nowalk;
-	flag2: nocrouch;
-	flag3: noautoturn
-}
-	
+assertSpecial{flag: nowalk; flag2: nocrouch; flag3: noautoturn}
+
 # Apply X velocity from constants.
-velset{x: const(velocity.run.fwd.x)}
+velSet{x: const(velocity.run.fwd.x)}
 
 # Deplete run bar.
-poweradd{value: -20}
+powerAdd{value: -20}
 
 # This resets run stuffs.
 # Also, makes character yell.
@@ -307,10 +294,18 @@ if time%15 = 0 {
 	call ComSound(11,0 + random%4);
 }
 
-# Play run animation.
-if anim != const(AnimRunFwdOrHopForward) && anim != const(AnimStandTurning)
-	|| anim = const(AnimStandTurning) && animtime = 0 {
-	changeanim{value: const(AnimRunFwdOrHopForward)}
+# Play run animation. Play failsafe one first.
+# TODO: Is this truly needed?
+if !selfAnimExist(const(AnimRunFwdOrHopForward)) {
+	if anim != const(AnimWalkingForwards) && anim != const(AnimStandTurning)
+		|| anim = const(AnimStandTurning) && animTime = 0 {
+		changeAnim{value: const(AnimWalkingForwards)}
+	}
+} else {
+	if anim != const(AnimRunFwdOrHopForward) && anim != const(AnimStandTurning)
+		|| anim = const(AnimStandTurning) && animTime = 0 {
+		changeAnim{value: const(AnimRunFwdOrHopForward)}
+	}
 }
 
 # This resets timer just in case you've exited the run state.
@@ -322,36 +317,33 @@ if power <= 0 || command != "holdfwd" || (command = "holdup" || command = "holdf
 # If player has no more power, just stop.
 if power <= 0 {
 	if command = "holdfwd" {
-		changestate{value: const(StateWalk); ctrl: 1}
+		selfState{value: const(StateWalk); ctrl: 1}
 	} else {
-		changestate{value: const(StateStand); ctrl: 1}
+		selfState{value: const(StateStand); ctrl: 1}
 	}
 } else { # Still, stop even with power.
 	if command != "holdfwd" {
-		changestate{value: const(StateStand); ctrl: 1}
+		selfState{value: const(StateStand); ctrl: 1}
 	}
 }
 
 # ---------------------------------------------
 # Stand Block [Start]
-[Statedef const(StateGuard_start);
-type: U;
-physics: U;
-ctrl: 0;]
+[StateDef const(StateGuard_start); type: U; physics: U; ctrl: 0;]
 
 # Change animation.
 # Air block is disabled for MK characters,
 # as they never blocked mid-air.
 if time = 0 {
-	if statetype = C {
-		changeanim{value: const(AnimStartGuarding_crouch)}
+	if stateType = C {
+		changeAnim{value: const(AnimStartGuarding_crouch)}
 	} else {
-		changeanim{value: const(AnimStartGuarding_stand)}
+		changeAnim{value: const(AnimStartGuarding_stand)}
 	}
-	if statetype = S { # If standing.
-		statetypeset{physics: S}
-	} else if statetype = C { # If crouching.
-		statetypeset{physics: C}
+	if stateType = S { # If standing.
+		stateTypeSet{physics: S}
+	} else if stateType = C { # If crouching.
+		stateTypeSet{physics: C}
 	}
 }
 
@@ -359,11 +351,11 @@ if time = 0 {
 call HiToLoAndLoToHi();
 
 # End of state.
-if animtime = 0 {
-	if statetype = C {
-		changestate{value: const(StateCrouchGuard_guarding)}
+if animTime = 0 {
+	if stateType = C {
+		changeState{value: const(StateCrouchGuard_guarding)}
 	} else {
-		changestate{value: const(StateStandGuard_guarding)}
+		changeState{value: const(StateStandGuard_guarding)}
 	}
 }
 
@@ -372,19 +364,17 @@ call StopGuarding();
 
 # ---------------------------------------------
 # Stand Block [Guard]
-[Statedef const(StateStandGuard_guarding);
-type: S;
-physics: S;
+[StateDef const(StateStandGuard_guarding); type: S; physics: S;
 ctrl: 0;]
 
 # Change animation.
 if anim != const(AnimGuard_stand) {
-	changeanim{value: const(AnimGuard_stand)}
+	changeAnim{value: const(AnimGuard_stand)}
 }
 
 # End of state.
 if command = "holddown" {
-	changestate{value: const(StateCrouchGuard_guarding)}
+	selfState{value: const(StateCrouchGuard_guarding)}
 }
 
 # Stop guarding.
@@ -392,19 +382,16 @@ call StopGuarding();
 
 # ---------------------------------------------
 # Crouch Block [Guard]
-[Statedef const(StateCrouchGuard_guarding);
-type: C;
-physics: C;
-ctrl: 0;]
+[StateDef 131; type: C; physics: C; ctrl: 0;]
 
 # Change animation.
 if anim != const(AnimGuard_crouch) {
-	changeanim{value: const(AnimGuard_crouch)}
+	changeAnim{value: const(AnimGuard_crouch)}
 }
 
 # End of state.
 if command != "holddown" {
-	changestate{value: const(StateStandGuard_guarding)}
+	selfState{value: const(StateStandGuard_guarding)}
 }
 
 # Stop guarding.
@@ -412,56 +399,69 @@ call StopGuarding();
 
 # ---------------------------------------------
 # Block [End]
-[Statedef const(StateGuard_end);
-type: U;
-physics: U;
-ctrl: 0;]
+[StateDef const(StateGuard_end); type: U; physics: U; ctrl: 0;]
 
 # Change animation.
 if time = 0 {
-	if statetype = C {
-		changeanim{value: const(AnimStopGuarding_crouch)}
+	if stateType = C {
+		changeAnim{value: const(AnimStopGuarding_crouch)}
 	} else {
-		changeanim{value: const(AnimStopGuarding_stand)}
+		changeAnim{value: const(AnimStopGuarding_stand)}
 	}
-	if statetype = S {
-		statetypeset{physics: S}
-	} else if statetype = C {
-		statetypeset{physics: C}
+	if stateType = S {
+		stateTypeSet{physics: S}
+	} else if stateType = C {
+		stateTypeSet{physics: C}
 	}
 }
 
 # Make them go from low to high.
 call HiToLoAndLoToHi();
 
-if statetype = S {
-	if animtime = 0 {
-		call StateEnd(const(StateStand));
+if stateType = S {
+	if animTime = 0 {
+		selfState{value: const(StateStand); ctrl: 1}
 	}
-} else if statetype = C {
-	if animtime = 0 {
-		call StateEnd(const(StateCrouching));
+} else if stateType = C {
+	if animTime = 0 {
+		selfState{value: const(StateCrouching); ctrl: 1}
 	}
 }
 
 # ---------------------------------------------
+# Win Pose
+# Override it if your character has special stuff.
+[StateDef const(StateWin); type: S; ctrl: 0;
+anim: const(AnimWin); velSet: 0,0;]
+
+# Don't hit me, I won already!
+notHitBy{value: SCA; time: 1}
+
+# ---------------------------------------------
 # High Punch I
-[Statedef const(StateHighPunchI);
-type: S;
-movetype: A;
-physics: S;
-velset: 0,0;
-ctrl: 0;
-anim: cond(prevstateno != 201, const(AnimHighPunchInit), const(AnimHighPunchI));]
+[StateDef const(StateHighPunchI); type: S; moveType: A; physics: S;
+velSet: 0,0; ctrl: 0;
+anim: cond(prevStateNo != const(StateHighPunchII), const(AnimHighPunchInit), const(AnimHighPunchI));]
 
 # Play a wind sound. Impactful!
-if time = 3 {
+if time = 0 {
 	call ComSound(1,0 + random%2);
 	call CharVoice(2,0 + random%2);
 }
 
+# TODO: Fix all punch limiter stuff.
+# Limiter for punches has *kicked*.
+#persistent(0) if map(consecutivePunchCount) >= 5 {
+#	stateTypeSet{moveType: I}
+#}
+
+# Send P2 away and stop punching.
+#if moveHit && target,stateType != A && map(consecutivePunchCount) >= 5 {
+#	targetState{value: 5060}
+#}
+
 # Hitbox for the move.
-if !movecontact {
+if !moveContact {
 	call PunchHitboxH();
 }
 
@@ -472,36 +472,40 @@ call PunchBuffer();
 if map(commandBuffer) = 1 || map(commandBuffer) = 2 {
 	if time = 10 {
 		if map(commandBuffer) = 2 {
-			changestate{value: const(StateLowPunchII)}
+			selfState{value: const(StateLowPunchII)}
 		} else {
-			changestate{value: const(StateHighPunchII)}
+			selfState{value: const(StateHighPunchII)}
 		}
 	}
 }
 
 # End of state.
-if animtime = 0 {
-	call StateEnd(const(StateStand));
+if animTime = 0 {
+	selfState{value: 0; ctrl: 1}
 }
 
 # ---------------------------------------------
 # High Punch II
-[Statedef const(StateHighPunchII);
-type: S;
-movetype: A;
-physics: S;
-velset: 0,0;
-ctrl: 0;
-anim: const(AnimHighPunchII);]
+[StateDef const(StateHighPunchII); type: S; moveType: A; physics: S;
+velSet: 0,0; ctrl: 0; anim: const(AnimHighPunchII);]
 
-# Play a wind sound. Impactful!
-if time = 3 {
-	call ComSound(1,0 + random%2);
+# Play them attacking. Impactful!
+if time = 0 {
+	call ComSound(1,10 + 2*(random%2));
 	call CharVoice(2,0 + random%2);
+	#if map(consecutivePunchCount) > 5 { # Reset punch variable.
+	#	map(consecutivePunchCount) := 0;
+	}
 }
 
+# Send P2 away and stop punching.
+#if moveHit && target,stateType != A && map(consecutivePunchCount) >= 5 {
+#	stateTypeSet{moveType: I}
+#	targetState{value: 5060}
+#}
+
 # Hitbox for the move.
-if !movecontact {
+if !moveContact {
 	call PunchHitboxH();
 }
 
@@ -512,36 +516,42 @@ call PunchBuffer();
 if map(commandBuffer) = 1 || map(commandBuffer) = 2 {
 	if time = 10 {
 		if map(commandBuffer) = 2 {
-			changestate{value: const(StateLowPunchI)}
+			selfState{value: const(StateLowPunchI)}
 		} else {
-			changestate{value: const(StateHighPunchI)}
+			selfState{value: const(StateHighPunchI)}
 		}
 	}
 }
 
 # End of state.
-if animtime = 0 {
-	call StateEnd(const(StateStand));
+if animTime = 0 {
+	selfState{value: 0; ctrl: 1}
 }
 
 # ---------------------------------------------
 # Low Punch I
-[Statedef const(StateLowPunchI);
-type: S;
-movetype: A;
-physics: S;
-velset: 0,0;
-ctrl: 0;
-anim: cond(prevstateno != 221, const(AnimLowPunchInit), const(AnimLowPunchI));]
+[StateDef const(StateLowPunchI); type: S; moveType: A; physics: S;
+velset: 0,0; ctrl: 0;
+anim: cond(prevStateNo != const(StateLowPunchII), const(AnimLowPunchInit), const(AnimLowPunchI));]
 
-# Play a wind sound. Impactful!
-if time = 3 {
-	call ComSound(1,0 + random%2);
+# Play them attacking. Impactful!
+if time = 0 {
+	call ComSound(1,10 + 2*(random%2));
 	call CharVoice(2,0 + random%2);
 }
 
+# Limiter for punches has *kicked*.
+#persistent(0) if map(consecutivePunchCount) >= 5 {
+	# Send P2 away and stop punching.
+#	if moveHit && target,stateType != A {
+#		targetState{value: 5060}
+#	}
+#	stateTypeSet{moveType: I}
+#	assertSpecial{flag: animfreeze}
+#}
+
 # Hitbox for the move.
-if !movecontact {
+if !moveContact {
 	call PunchHitboxL();
 }
 
@@ -551,37 +561,42 @@ call PunchBuffer();
 # Move on to next punch state.
 if map(commandBuffer) = 1 || map(commandBuffer) = 2 {
 	if time = 10 {
-		if map(commandBuffer) = 1 {
-			changestate{value: const(StateHighPunchII)}
+		if map(commandBuffer) = 2 {
+			selfState{value: const(StateLowPunchII)}
 		} else {
-			changestate{value: const(StateLowPunchII)}
+			selfState{value: const(StateHighPunchII)}
 		}
 	}
 }
 
 # End of state.
-if animtime = 0 {
-	call StateEnd(const(StateStand));
+if animTime = 0 {
+	selfState{value: 0; ctrl: 1}
 }
 
 # ---------------------------------------------
 # Low Punch II
-[Statedef const(StateLowPunchII);
-type: S;
-movetype: A;
-physics: S;
-velset: 0,0;
-ctrl: 0;
-anim: const(AnimLowPunchII);]
+[StateDef const(StateLowPunchII); type: S; moveType: A; physics: S;
+velSet: 0,0; ctrl: 0; anim: const(AnimLowPunchII);]
 
-# Play a wind sound. Impactful!
-if time = 3 {
-	call ComSound(1,0 + random%2);
+# Play them attacking. Impactful!
+if time = 0 {
+	call ComSound(1,10 + 2*(random%2));
 	call CharVoice(2,0 + random%2);
 }
 
+# Limiter for punches has *kicked*.
+#persistent(0) if map(consecutivePunchCount) >= 5 {
+	# Send P2 away and stop punching.
+#	if moveHit && target,stateType != A {
+#		targetState{value: 5060}
+#	}
+#	stateTypeSet{moveType: I}
+#	assertSpecial{flag: animfreeze}
+#}
+
 # Hitbox for the move.
-if !movecontact {
+if !moveContact {
 	call PunchHitboxL();
 }
 
@@ -592,43 +607,62 @@ call PunchBuffer();
 if map(commandBuffer) = 1 || map(commandBuffer) = 2 {
 	if time = 10 {
 		if map(commandBuffer) = 1 {
-			changestate{value: const(StateHighPunchI)}
+			selfState{value: const(StateHighPunchI)}
 		} else {
-			changestate{value: const(StateLowPunchI)}
+			selfState{value: const(StateLowPunchI)}
 		}
 	}
 }
 
 # End of state.
-if animtime = 0 {
-	call StateEnd(const(StateStand));
+if animTime = 0 {
+	selfState{value: 0; ctrl: 1}
+}
+
+# ---------------------------------------------
+# Punch Corner Limiter
+# TODO: Adapt to constants style.
+# This was ported from MKII Remix as-is.
+# It's probably not accurate to original games.
+# To be used in MK2/MK3 styles, as MK1 makes P1
+# get to the stumble/stagger state instead.
+[StateDef 260; type: S; moveType: I; physics: N;
+velSet: -7,0; ctrl: 0;]
+
+# Freeze animation immediately.
+assertSpecial{flag: animfreeze}
+
+# Decelerate.
+if time > 11 {
+	velMul{x: 0.5}
+}
+
+# End of state.
+if time = 24 {
+	selfState{value: 0 + 10*(command = "holddown"); ctrl: 1}
 }
 
 # ---------------------------------------------
 # High Kick
-[Statedef const(StateHighKick);
-type: S;
-movetype: A;
-physics: S;
-velset: 0,0;
-ctrl: 0;
-anim: const(AnimHighKick);]
+[StateDef const(StateHighKick); type: S; moveType: A; physics: S;
+velSet: 0,0; ctrl: 0; anim: const(AnimHighKick);]
 
-# Play a wind sound. Impactful!
-if time = 3 {
+# Play them attacking. Impactful!
+if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
 	call CharVoice(2,0 + random%2);
 }
 
 # If P2 has a custom reaction, use it.
 # In MK, kicks have different anims.
-ignorehitpause persistent(0) if enemy,selfanimexist(6010) && movehit {
-	targetstate{value: 5002}
+# TODO: Adapt to constants style.
+ignoreHitPause persistent(0) if enemy,selfAnimExist(6010) && moveHit {
+	targetState{value: 5002}
 }
 
 # Hitbox for the move.
-if !movecontact {
-	hitdef {	
+if !moveContact {
+	hitDef {
 		attr: S,NA;
 		hitflag: MAF;
 		guardflag: MA;
@@ -661,40 +695,36 @@ if !movecontact {
 }
 
 # Apply shake if blocked [MK3].
-ignorehitpause persistent(0) if moveguarded {
-	call Shake(16,65,4);
+ignoreHitPause persistent(0) if moveGuarded {
+	envShake{time: 16; freq: 65; ampl: 3}
 }
 
 # End of state.
-if animtime = 0 {
-	call StateEnd(const(StateStand));
+if animTime = 0 {
+	selfState{value: const(StateStand); ctrl: 1}
 }
 
 # ---------------------------------------------
 # Low Kick
-[Statedef const(StateLowKick);
-type: S;
-movetype: A;
-physics: S;
-velset: 0,0;
-ctrl: 0;
-anim: const(AnimLowKick);]
+[StateDef const(StateLowKick); type: S; moveType: A; physics: S;
+velSet: 0,0; ctrl: 0; anim: const(AnimLowKick);]
 
-# Play a wind sound. Impactful!
-if time = 3 {
+# Play them attacking. Impactful!
+if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
 	call CharVoice(2,0 + random%2);
 }
 
 # If P2 has a custom reaction, use it.
 # In MK, kicks have different anims.
-ignorehitpause persistent(0) if enemy,selfanimexist(6011) && movehit {
-	targetstate{value: 5003}
+# TODO: Adapt to constants style.
+ignoreHitPause persistent(0) if enemy,selfAnimExist(6011) && moveHit {
+	targetState{value: 5003}
 }
 
 # Hitbox for the move.
-if !movecontact {
-	hitdef {	
+if !moveContact {
+	hitDef {
 		attr: S,NA;
 		hitflag: MAF;
 		guardflag: MA;
@@ -727,35 +757,30 @@ if !movecontact {
 }
 
 # Apply shake if blocked [MK3].
-ignorehitpause persistent(0) if moveguarded {
-	call Shake(16,65,4);
+ignoreHitPause persistent(0) if moveGuarded {
+	envShake{time: 16; freq: 65; ampl: 3}
 }
 
 # End of state.
-if animtime = 0 {
-	call StateEnd(const(StateStand));
+if animTime = 0 {
+	selfState{value: const(StateStand); ctrl: 1}
 }
 
 # ---------------------------------------------
 # Roundhouse Kick
-[Statedef const(StateRoundhouseKick);
-type: S;
-movetype: A;
-physics: S;
-velset: 0,0;
-ctrl: 0;
-anim: const(AnimRoundhouseKick);]
+[StateDef const(StateRoundhouseKick); type: S; moveType: A; physics: S;
+velSet: 0,0; ctrl: 0; anim: const(AnimRoundhouseKick);]
 
-# Play a wind sound. Impactful!
-if time = 3 {
+# Play them attacking. Impactful!
+if time = 0 {
 	call ComSound(1,20);
 	call CharVoice(2,0 + random%2);
 }
 
 # Hitbox for the move.
-if const(OpenMK.Char.RoundhouseKick) = 0 || const(OpenMK.Char.RoundhouseKick) = [2,3] { # MK2 & MK3 Roundhouse Kick.
-	if !movecontact {
-		hitdef {
+if const(OpenMK.Char.RoundhouseKick) = [1,2] { # MK2 & MK3 Roundhouse Kick.
+	if !moveContact {
+		hitDef {
 			attr: S,NA;
 			hitflag: MAF;
 			guardflag: MA;
@@ -786,9 +811,9 @@ if const(OpenMK.Char.RoundhouseKick) = 0 || const(OpenMK.Char.RoundhouseKick) = 
 			fall.kill: 1;
 		}
 	}
-} else if const(OpenMK.Char.RoundhouseKick) = 1 { # MK1 Roundhouse Kick.
-	if !movecontact {
-		hitdef {
+} else if const(OpenMK.Char.RoundhouseKick) = 0 { # MK1 Roundhouse Kick.
+	if !moveContact {
+		hitDef {
 			attr: S,NA;
 			hitflag: MAF;
 			guardflag: MA;
@@ -819,37 +844,34 @@ if const(OpenMK.Char.RoundhouseKick) = 0 || const(OpenMK.Char.RoundhouseKick) = 
 			fall.kill: 1;
 		}
 	}
+
 	# If P2 has a custom reaction, use it.
-	ignorehitpause persistent(0) if enemy,selfanimexist(6000) && movehit {
-		targetstate{value: 5060}
+	# TODO: Adapt to constants style.
+	ignoreHitPause persistent(0) if enemy,selfAnimExist(6000) && moveHit {
+		targetState{value: 5060}
 	}
 }
 
 # Apply shake upon contact.
-if const(OpenMK.Char.RoundhouseKick) = [0,1] || const(OpenMK.Char.RoundhouseKick) = 3 { # MK1 and MK3 behavior.
-	ignorehitpause persistent(0) if movecontact {
-	call Shake(16,65,4);
+if const(OpenMK.Char.RoundhouseKick) = 0 || const(OpenMK.Char.RoundhouseKick) = 2 { # MK1 and MK3 behavior.
+	ignoreHitPause persistent(0) if moveContact {
+	envShake{time: 16; freq: 65; ampl: 3}
 	}
-} else if const(OpenMK.Char.RoundhouseKick) = 2 { # MKII behavior.
-	ignorehitpause persistent(0) if moveguarded {
-	call Shake(16,65,4);
+} else if const(OpenMK.Char.RoundhouseKick) = 1 { # MKII behavior.
+	ignoreHitPause persistent(0) if moveGuarded {
+	envShake{time: 16; freq: 65; ampl: 3}
 	}
 }
 
 # End of state.
-if animtime = 0 {
-	call StateEnd(const(StateStand));
+if animTime = 0 {
+	selfState{value: const(StateStand); ctrl: 1}
 }
 
 # ---------------------------------------------
 # Sweep
-[Statedef const(StateSweep);
-type: C;
-movetype: A;
-physics: C;
-velset: 0,0;
-ctrl: 0;
-anim: const(AnimSweep);]
+[StateDef const(StateSweep); type: C; moveType: A; physics: C;
+velSet: 0,0; ctrl: 0; anim: const(AnimSweep);]
 
 # Play a wind sound. Impactful!
 if time = 9 {
@@ -858,14 +880,15 @@ if time = 9 {
 }
 
 # If P2 has a custom reaction, use it.
-ignorehitpause persistent(0) if enemy,selfanimexist(6020) && movehit {
-	targetstate{value: 5004}
+# TODO: Adapt to constants style.
+ignoreHitPause persistent(0) if enemy,selfAnimExist(6020) && moveHit {
+	targetState{value: 5004}
 }
 
 # Hitbox for the move.
 if const(OpenMK.Char.SweepFix) = 0 { # Has infinite.
-	if !movecontact || p2statetype = l {
-		hitdef {
+	if !moveContact {
+		hitDef {
 			attr: C,NA;
 			hitflag: MAFD;
 			guardflag: L;
@@ -898,7 +921,7 @@ if const(OpenMK.Char.SweepFix) = 0 { # Has infinite.
 		}
 	}
 } else { # Game is finally playable! LOL
-		if !movecontact || p2statetype = l {
+		if !moveContact {
 		hitdef {
 			attr: C,NA;
 			hitflag: MAF;
@@ -933,29 +956,24 @@ if const(OpenMK.Char.SweepFix) = 0 { # Has infinite.
 }
 
 # End of state.
-if animtime = 0 {
-	call StateEnd(const(StateStand));
+if animTime = 0 {
+	selfState{value: const(StateStand); ctrl: 1}
 }
 
 # ---------------------------------------------
 # Crouch High Kick
-[Statedef const(StateCrouchHighKick);
-type: C;
-movetype: A;
-physics: C;
-velset: 0,0;
-ctrl: 0;
-anim: const(AnimCrouchHighKick);]
+[StateDef const(StateCrouchHighKick); type: C; moveType: A; physics: C;
+velset: 0,0; ctrl: 0; anim: const(AnimCrouchHighKick);]
 
-# Play a wind sound. Impactful!
-if time = 3 {
-	call ComSound(1,0 + 2*(random%2));
+# Play them attacking. Impactful!
+if time = 0 {
+	call ComSound(1,10 + 2*(random%2));
 	call CharVoice(2,0 + random%2);
 }
 
 # Hitbox for the move.
-if !movecontact {
-	hitdef {
+if !moveContact {
+	hitDef {
 		attr: C,NA;
 		hitflag: MAF;
 		guardflag: M;
@@ -988,34 +1006,28 @@ if !movecontact {
 }
 
 # End of state.
-if animtime = 0 {
-	call StateEnd(const(StateCrouching));
+if animTime = 0 {
+	selfState{value: const(StateCrouching); ctrl: 1}
 }
 
 # ---------------------------------------------
 # Uppercut
-[Statedef const(StateUppercut);
-type: C;
-movetype: A;
-physics: N;
-velset: 0,0;
-ctrl: 0;
-anim: const(AnimUppercut);]
+[StateDef const(StateUppercut); type: C; moveType: A; physics: N;
+velSet: 0,0; ctrl: 0; anim: const(AnimUppercut);]
 
-# Play a wind sound. Impactful!
-if time = 3 {
+# Play them attacking. Impactful!
+if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
-	call CharVoice(2,0 + random%2);
 }
 
 # I'm no longer crouching.
-if animelem = 3 {
-	statetypeset{statetype: S}
+if animElem = 3 {
+	stateTypeSet{stateType: S}
 }
 
 # Hitbox for the move.
-if !movecontact {
-	hitdef {
+if !moveContact {
+	hitDef {
 		attr: S,NA;
 		hitflag: HAF;
 		guardflag: MA;
@@ -1047,44 +1059,45 @@ if !movecontact {
 }
 
 # Freeze upon hit.
-if movehit = [1,57] || moveguarded = [1,32] {
-	assertspecial{flag: animfreeze}
+if const(OpenMK.Char.UppercutFreeze) = 0 {
+	if moveHit = [1,47] || moveGuarded = [1,15] {
+		assertSpecial{flag: animfreeze}
+	}
+} else if const(OpenMK.Char.UppercutFreeze) = [1,2] {
+	if moveHit = [1,57] || moveGuarded = [1,32] {
+		assertSpecial{flag: animfreeze}
+	}
 }
 
 # Apply shake upon contact.
-persistent(0) ignorehitpause if movecontact {
-	call Shake(16,65,4);
+persistent(0) ignoreHitPause if moveContact {
+	envShake{time: 16; freq: 65; ampl: 3}
 }
 
 # End of state.
-if animtime = 0 {
-	call StateEnd(const(StateStand));
+if animTime = 0 {
+	selfState{value: const(StateStand); ctrl: 1}
 }
 
 # ---------------------------------------------
 # Crouch Low Punch
-[Statedef const(StateCrouchLowPunch);
-type: C;
-movetype: A;
-physics: C;
-velset: 0,0;
-ctrl: 0;
-anim: const(AnimCrouchLowPunch);]
+[StateDef const(StateCrouchLowPunch); type: C; moveType: A; physics: C;
+velSet: 0,0; ctrl: 0; anim: const(AnimCrouchLowPunch);]
 
 # Change to MK1 behaviour.
-if const(OpenMK.Char.CrouchAttacks) = 1 {
-	call StateEnd(const(StateUppercut));
+if const(OpenMK.Char.CrouchAttacks) = 1 || !selfAnimExist(const(AnimCrouchLowPunch)) {
+	selfState{value: const(StateUppercut)}
 }
 
-# Play a wind sound. Impactful!
-if time = 3 {
+# Play them attacking. Impactful!
+if time = 0 {
 	call ComSound(1,0 + 2*(random%2));
 	call CharVoice(2,0 + random%2);
 }
 
 # Hitbox for the move.
-if !movecontact {
-	hitdef {
+if !moveContact {
+	hitDef {
 		attr: C,NA;
 		hitflag: MAF;
 		guardflag: M;
@@ -1116,39 +1129,34 @@ if !movecontact {
 }
 
 # Skip pause time. MK does it like this, IDK why.
-persistent(0) if movecontact {
-	changeanim{value: anim; elem: 5}
+persistent(0) if moveContact {
+	changeAnim{value: anim; elem: 5}
 }
 
 # End of state.
-if animtime = 0 {
-	call StateEnd(const(StateCrouching));
+if animTime = 0 {
+	selfState{value: const(StateCrouching); ctrl: 1}
 }
 
 # ---------------------------------------------
 # Crouch Low Kick
-[Statedef const(StateCrouchLowKick);
-type: C;
-movetype: A;
-physics: C;
-velset: 0,0;
-ctrl: 0;
-anim: const(AnimCrouchLowKick);]
+[StateDef const(StateCrouchLowKick); type: C; moveType: A; physics: C;
+velSet: 0,0; ctrl: 0; anim: const(AnimCrouchLowKick);]
 
 # Change to MK1 behaviour.
-if const(OpenMK.Char.CrouchAttacks) = 1 {
-	call StateEnd(const(StateCrouchHighKick));
+if const(OpenMK.Char.CrouchAttacks) = 1 || !selfAnimExist(const(AnimCrouchLowKick)) {
+	selfState{value: const(StateCrouchHighKick)}
 }
 
-# Play a wind sound. Impactful!
-if time = 3 {
+# Play them attacking. Impactful!
+if time = 0 {
 	call ComSound(1,0 + 2*(random%2));
 	call CharVoice(2,0 + random%2);
 }
 
 # Hitbox for the move.
-if !movecontact {
-	hitdef {
+if !moveContact {
+	hitDef {
 		attr: C,NA;
 		hitflag: MAF;
 		guardflag: M;
@@ -1181,28 +1189,24 @@ if !movecontact {
 }
 
 # End of state.
-if animtime = 0 {
-	call StateEnd(const(StateCrouching));
+if animTime = 0 {
+	selfState{value: const(StateCrouching); ctrl: 1}
 }
 
 # ---------------------------------------------
 # Air Kick
-[Statedef const(StateAirKick);
-type: A;
-movetype: A;
-physics: A;
-ctrl: 0;
-anim: const(AnimAirKick);]
+[StateDef const(StateAirKick); type: A; moveType: A; physics: A;
+ctrl: 0; anim: const(AnimAirKick);]
 
-# Play a wind sound. Impactful!
-if time = 3 {
+# Play them attacking. Impactful!
+if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
 	call CharVoice(2,0 + random%2);
 }
 
 # Hitbox for the move.
-if !movecontact {
-	hitdef {
+if !moveContact {
+	hitDef {
 		attr: A,NA;
 		hitflag: MAF;
 		guardflag: MA;
@@ -1230,33 +1234,30 @@ if !movecontact {
 	}
 }
 
-persistent(0) if movecontact { # End of state.
-	call StateEnd(const(StateConnectedKick));
+# End of state.
+persistent(0) if moveContact {
+	selfState{value: const(StateConnectedAirAttack)}
 }
 
 # ---------------------------------------------
 # Air Punch
-[Statedef const(StateAirPunch);
-type: A;
-movetype: A;
-physics: A;
-ctrl: 0;
-anim: const(AnimAirPunch);]
+[StateDef const(StateAirPunch); type: A; moveType: A; physics: A;
+ctrl: 0; anim: const(AnimAirPunch);]
 
 # Behind you!
-if time = 0 && p2dist x < 0 {
+if time = 0 && p2Dist x < 0 {
 	turn{}
 }
 
-# Play a wind sound. Impactful!
-if time = 3 {
+# Play them attacking. Impactful!
+if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
 	call CharVoice(2,0 + random%2);
 }
 
 # Hitbox for the move.
-if !movecontact {
-	hitdef {
+if !moveContact {
+	hitDef {
 		attr: A,NA;
 		hitflag: MAF;
 		guardflag: MA;
@@ -1282,33 +1283,30 @@ if !movecontact {
 	}
 }
 
-persistent(0) if movecontact { # End of state.
-	call StateEnd(const(StateConnectedKick));
+# End of state.
+persistent(0) if moveContact {
+	selfState{value: const(StateConnectedAirAttack)}
 }
 
 # ---------------------------------------------
 # Leap Kick
-[Statedef const(StateLeapKick);
-type: A;
-movetype: A;
-physics: A;
-ctrl: 0;
-anim: const(AnimLeapKick);]
+[StateDef const(StateLeapKick); type: A; movetype: A; physics: A;
+ctrl: 0; anim: const(AnimLeapKick);]
 
 # Behind you!
-if time = 0 && p2dist x < 0 {
+if time = 0 && p2Dist x < 0 {
 	turn{}
 }
 
-# Play a wind sound. Impactful!
-if time = 3 {
+# Play them attacking. Impactful!
+if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
 	call CharVoice(2,0 + random%2);
 }
 
 # Hitbox for the move.
-if !movecontact {
-	hitdef {
+if !moveContact {
+	hitDef {
 		attr: A,NA;
 		hitflag: MAF;
 		guardflag: MA;
@@ -1337,33 +1335,50 @@ if !movecontact {
 	}
 }
 
-persistent(0) if movecontact { # End of state.
-	call StateEnd(const(StateConnectedKick));
+# End of state.
+persistent(0) if moveContact {
+	selfState{value: const(StateConnectedAirAttack)}
 }
 
 # ---------------------------------------------
-# Connected hit
-[Statedef const(StateConnectedKick);
-type: A;
-movetype: A;
-physics: A;
+# Connected Aerial Hit
+[StateDef const(StateConnectedAirAttack); type: A; moveType: A; physics: A;
 ctrl: 0;]
 
 # Shake!
-persistent(0) if prevstateno != 620 {
-	call Shake(16,65,4);
+persistent(0) if prevStateNo != const(AnimLeapKick) {
+	envShake{time: 16; freq: 65; ampl: 3}
+
 } else { # If move was blocked.
-	ignorehitpause if enemy,stateno = [150,159] {
-		targetvelset{x: -3}
+	ignoreHitPause if enemy,stateNo = [const(StateStandGuardHit_shaking),const(StateAirGuardHit_knockedAway)] {
+		targetVelSet{x: -3}
 	}
 }
 
 # Hit animation.
 if time = 0 {
-	changeanim{value: anim + 1}
+	changeAnim{value: anim + 1}
 }
 
 # Don't fall yet!
-if prevstateno = [600,620] && time < 7 {
-	velset{x: 0; y: 0}
+if prevStateNo = [const(StateAirKick),const(AnimLeapKick)] && time < 7 {
+	velSet{x: 0; y: 0}
 }
+
+# ---------------------------------------------
+# Initialize (at the start of the round)
+[StateDef const(StateInitialize); type: S;]
+
+# Set run map to 380.
+map(runReload) := 380;
+
+# Rest of original code.
+if roundsExisted = 0 {
+	varRangeSet{value: 0}
+	varRangeSet{fvalue: 0}
+}
+remapPal{source: 1, 1; dest: 1, ifElse(isHelper, palNo, drawPalNo)}
+if roundNo = 1 {
+	changeState{value: 190}
+}
+changeState{value: 0}
