@@ -495,7 +495,6 @@ if time = 0 {
 	call CharVoice(2,0 + random%2);
 	#if map(consecutivePunchCount) > 5 { # Reset punch variable.
 	#	map(consecutivePunchCount) := 0;
-	}
 }
 
 # Send P2 away and stop punching.
