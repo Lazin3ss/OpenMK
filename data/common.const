@@ -16,6 +16,9 @@ OpenMK.Char.EnableRun = 0
 OpenMK.Char.EnableKombos = 0
 ;1 = Enables Dial-A-Kombos like MK3/UMK3, 2 = Enables MK4-like global combos. When 0 or not declared, character can't do button combos, instead it will only do a close hit, like MK1/MK2.
 
+OpenMK.Char.AirAttackToKombo = 0
+;1 = Enables option to get to a combo state after an air attack makes contact like in UMK3. When 0 or not declared, character can't do this, like in MK1/MK2.
+
 OpenMK.Char.RoundhouseKick = 0
 ; 1 = Roundhouse has MK2 physics (camera doesn't shake by hit), 2 = Roundhouse has MK3 physics (camera shakes upon hit). When 0 or not declared, Roundhouse Kick behaves like MK1.
 
@@ -40,6 +43,18 @@ OpenMK.TagBonesExplosion = 0
 ;If declared, character will explode when being defeated in tag mode.
 
 ; ---------------------------------------------
+; Reaction Anims
+AnimHitStagger = 6000
+AnimHitHighKick = 6010
+AnimHitLowKick = 6011
+AnimHitHighPunch = 6012
+AnimHitSweepTrip = 6020
+AnimHitSweepTripDead = 6021
+AnimHitSweepTripGetUp = 6022
+AnimHitNutpunch = 6030
+AnimFatalDecap = 7000
+
+; ---------------------------------------------
 ; Attack Anims
 AnimHighPunchInit = 200
 AnimHighPunchII = 201
@@ -51,6 +66,8 @@ AnimHighKick = 210
 AnimLowKick = 230
 AnimRoundhouseKick = 240
 AnimSweep = 250
+AnimClosePunch = 300
+AnimCloseKick = 350
 AnimCrouchHighKick = 400
 AnimUppercut = 410
 AnimCrouchLowPunch = 420
@@ -69,6 +86,10 @@ StateHighKick = 220
 StateLowKick = 230
 StateRoundhouseKick = 240
 StateSweep = 250
+StateClosePunch = 300
+StateComboPunchStart = 301
+StateCloseKick = 350
+StateComboKickStart = 301
 StateCrouchHighKick = 400
 StateUppercut = 410
 StateCrouchLowPunch = 420

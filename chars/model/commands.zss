@@ -22,13 +22,25 @@ if ctrl && stateNo != const(StateWin) && stateNo != [const(StateGuard_start),con
 
 # ---------------------------------------------
 # Back+Attack ones
-if command = "back_z" { # Roundhouse Kick
+if command = "holdback" && command = "z" { # Roundhouse Kick
 	if stateType = S && ctrl && stateNo != const(StateWin) {
 		selfState{value: const(StateRoundhouseKick)}
 	}
-} else if command = "back_c" { # Sweep Kick
+} else if command = "holdback" && command = "c" { # Sweep Kick
 	if stateType = S && ctrl && stateNo != const(StateWin) {
 		selfState{value: const(StateSweep)}
+	}
+}
+
+# ---------------------------------------------
+# Close Hits/Dial-a-Kombos
+if stateType = S && ctrl && stateNo != const(StateWin) {
+	if p2StateType != A && p2BodyDist x <= 20 {
+		if command = "x" {
+			selfState{value: const(StateClosePunch)}
+		} else if (command = "c" || command = "z") {
+			selfState{value: const(StateCloseKick)}
+		}
 	}
 }
 

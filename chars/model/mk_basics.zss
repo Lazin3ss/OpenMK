@@ -53,7 +53,7 @@ hitDef {
 	yaccel: 0.4375;
 	ground.velocity: 0,0;
 	guard.velocity: -2;
-	air.velocity: -3,-6;
+	air.velocity: -3.8,-6;
 	p2facing: 1;
 	ground.cornerpush.veloff: 0;
 	air.fall: 1;
@@ -86,7 +86,7 @@ hitDef {
 	yaccel: 0.4375;
 	ground.velocity: 0,0;
 	guard.velocity: -2;
-	air.velocity: -3,-6;
+	air.velocity: -3.8,-6;
 	p2facing: 1;
 	ground.cornerpush.veloff: 0;
 	air.fall: 1;
@@ -213,11 +213,6 @@ if !alive {
 [StateDef const(StateJumpStart); type: S; physics: S; anim: const(AnimJumpStart_onGround);
 ctrl: 0; sprPriority: 1; facep2: 1;]
 
-# Set direction for movement.
-if time = 0 {
-	call CharVoice(1,1);
-}
-
 # Change speed depending of above variable.
 if command = "holdfwd" {
 	let x = const(velocity.jump.fwd.x); # Forward Roll
@@ -259,17 +254,7 @@ if animTime = 0 {
 # ---------------------------------------------
 # Run forward
 [StateDef const(StateRunForward); type: S; physics: S;
-sprPriority: 1;]
-
-# Check if animation 100 exists.
-# Otherwise, use normal animation as failsafe.
-# Meant to mimic Playstation's MK Trilogy MK1/MK2 chars.
-# TODO: Is this truly needed?
-if !selfAnimExist(const(AnimRunFwdOrHopForward)) {
-	changeAnim{value: const(AnimWalkingForwards)}
-} else {
-	changeAnim{value: const(AnimRunFwdOrHopForward)}
-}
+sprPriority: 1; anim: const(AnimRunFwdOrHopForward);]
 
 # Limit some movements.
 # In MK3 you can't crouch during walk and run.
@@ -286,7 +271,6 @@ powerAdd{value: -20}
 if time = 0 {
 	map(leaveRunState) := 0;
 	map(runReload) := 1000;
-	call CharVoice(1,0);
 }
 
 # Footstep sounds.
@@ -294,18 +278,10 @@ if time%15 = 0 {
 	call ComSound(11,0 + random%4);
 }
 
-# Play run animation. Play failsafe one first.
-# TODO: Is this truly needed?
-if !selfAnimExist(const(AnimRunFwdOrHopForward)) {
-	if anim != const(AnimWalkingForwards) && anim != const(AnimStandTurning)
-		|| anim = const(AnimStandTurning) && animTime = 0 {
-		changeAnim{value: const(AnimWalkingForwards)}
-	}
-} else {
-	if anim != const(AnimRunFwdOrHopForward) && anim != const(AnimStandTurning)
-		|| anim = const(AnimStandTurning) && animTime = 0 {
-		changeAnim{value: const(AnimRunFwdOrHopForward)}
-	}
+# Play run animation.
+if anim != const(AnimRunFwdOrHopForward) && anim != const(AnimStandTurning)
+	|| anim = const(AnimStandTurning) && animTime = 0 {
+	changeAnim{value: const(AnimRunFwdOrHopForward)}
 }
 
 # This resets timer just in case you've exited the run state.
@@ -431,8 +407,11 @@ if stateType = S {
 # ---------------------------------------------
 # Win Pose
 # Override it if your character has special stuff.
-[StateDef const(StateWin); type: S; ctrl: 0;
-anim: const(AnimWin); velSet: 0,0;]
+[StateDef const(StateWin); type: S; ctrl: 0; velSet: 0,0;]
+
+persistent(0) if anim != const(AnimWin) {
+	changeAnim{value: const(AnimWin)}
+}
 
 # Don't hit me, I won already!
 notHitBy{value: SCA; time: 1}
@@ -445,8 +424,7 @@ anim: cond(prevStateNo != const(StateHighPunchII), const(AnimHighPunchInit), con
 
 # Play a wind sound. Impactful!
 if time = 0 {
-	call ComSound(1,0 + random%2);
-	call CharVoice(2,0 + random%2);
+	call ComSound(1,10 + random%2);
 }
 
 # TODO: Fix all punch limiter stuff.
@@ -492,7 +470,6 @@ velSet: 0,0; ctrl: 0; anim: const(AnimHighPunchII);]
 # Play them attacking. Impactful!
 if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
-	call CharVoice(2,0 + random%2);
 	#if map(consecutivePunchCount) > 5 { # Reset punch variable.
 	#	map(consecutivePunchCount) := 0;
 }
@@ -536,7 +513,6 @@ anim: cond(prevStateNo != const(StateLowPunchII), const(AnimLowPunchInit), const
 # Play them attacking. Impactful!
 if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
-	call CharVoice(2,0 + random%2);
 }
 
 # Limiter for punches has *kicked*.
@@ -581,7 +557,6 @@ velSet: 0,0; ctrl: 0; anim: const(AnimLowPunchII);]
 # Play them attacking. Impactful!
 if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
-	call CharVoice(2,0 + random%2);
 }
 
 # Limiter for punches has *kicked*.
@@ -649,7 +624,6 @@ velSet: 0,0; ctrl: 0; anim: const(AnimHighKick);]
 # Play them attacking. Impactful!
 if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
-	call CharVoice(2,0 + random%2);
 }
 
 # If P2 has a custom reaction, use it.
@@ -711,7 +685,6 @@ velSet: 0,0; ctrl: 0; anim: const(AnimLowKick);]
 # Play them attacking. Impactful!
 if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
-	call CharVoice(2,0 + random%2);
 }
 
 # If P2 has a custom reaction, use it.
@@ -773,7 +746,6 @@ velSet: 0,0; ctrl: 0; anim: const(AnimRoundhouseKick);]
 # Play them attacking. Impactful!
 if time = 0 {
 	call ComSound(1,20);
-	call CharVoice(2,0 + random%2);
 }
 
 # Hitbox for the move.
@@ -875,7 +847,6 @@ velSet: 0,0; ctrl: 0; anim: const(AnimSweep);]
 # Play a wind sound. Impactful!
 if time = 9 {
 	call ComSound(1,10 + 2*(random%2));
-	call CharVoice(2,0 + random%2);
 }
 
 # If P2 has a custom reaction, use it.
@@ -960,6 +931,127 @@ if animTime = 0 {
 }
 
 # ---------------------------------------------
+# Close Hit - Punch
+[StateDef const(StateClosePunch); type: S; moveType: A; physics: S;
+velSet: 0,0; ctrl: 0; anim: const(AnimClosePunch); 
+sprPriority: 0; facep2: 1;]
+
+# Stick to the ground now!
+# Also, before MK3, these didn't exist, so we use this
+# to make them go at the combo states.
+if time = 0 {
+	if prevStateNo = const(StateConnectedAirAttack) {
+		posAdd{x: p2Dist x - 20}
+	}
+	posSet{y: 0}
+	if const(OpenMK.Char.EnableKombos) = 1 {
+		selfState{value: const(StateComboKickStart)}
+	}
+}
+
+# Hitbox.
+if !moveContact {
+	hitDef {
+		damage: 240,60;
+		attr: S,NA;
+		hitflag: HAF;
+		guardflag: H;
+		animtype: hard;
+		air.animtype: back;
+		pausetime: 16,0;
+		sparkno: -1;
+		guard.sparkno: -1;
+		hitsound: f2,20 + random%2;
+		guardsound: f3,1;
+		ground.type: high;
+		air.type: high;
+		ground.slidetime: 16;
+		guard.slidetime: 16;
+		ground.hittime: 16;
+		guard.hittime: 16;
+		ground.velocity: -4,0;
+		air.velocity: -3.8,-6;
+		ground.cornerpush.veloff: 0;
+		air.fall: 1;
+		fall.recover: 1;
+		p2facing: 1;
+		kill: 1;
+		fall.kill: 1;
+		guard.kill: 1;
+		forcestand: 1;
+		envshake.time: 24;
+		envshake.freq: 65;
+		envshake.ampl: 3;
+	}
+}
+
+# End of state.
+if animTime = 0 {
+	selfState{value: 0; ctrl: 1}
+}
+
+# ---------------------------------------------
+# Close Hit - Kick
+[StateDef const(StateCloseKick); type: S; moveType: A; physics: S;
+velSet: 0,0; ctrl: 0; anim: const(AnimCloseKick); 
+sprPriority: 0; facep2: 1;]
+
+# Stick to the ground now!
+# Also, before MK3, these didn't exist, so we use this
+# to make them go at the combo states.
+if time = 0 {
+	if prevStateNo = const(StateConnectedAirAttack) {
+		posAdd{x: p2Dist x - 20}
+	}
+	posSet{y: 0}
+	if const(OpenMK.Char.EnableKombos) = 1 {
+		selfState{value: const(StateComboKickStart)}
+	}
+}
+
+# Hitbox.
+if !moveContact {
+	hitDef {
+		damage: 200,60;
+		attr: S,NA;
+		hitflag: MAF;
+		guardflag: M;
+		animtype: hard;
+		air.animtype: back;
+		pausetime: 18,0;
+		sparkno: -1;
+		guard.sparkno: -1;
+		hitsound: f2,20 + random%2;
+		guardsound: f3,1;
+		ground.type: high;
+		air.type: high;
+		ground.slidetime: 16;
+		guard.slidetime: 16;
+		ground.hittime: 16;
+		guard.hittime: 16;
+		ground.velocity: -4,-6;
+		air.velocity: -3.8,-6;
+		ground.cornerpush.veloff: 0;
+		fall: 1;
+		air.fall: 1;
+		fall.recover: 0;
+		p2facing: 1;
+		kill: 1;
+		fall.kill: 1;
+		guard.kill: 1;
+		forcestand: 1;
+		envshake.time: 24;
+		envshake.freq: 65;
+		envshake.ampl: 3;
+	}
+}
+
+# End of state.
+if animTime = 0 {
+	selfState{value: 0; ctrl: 1}
+}
+
+# ---------------------------------------------
 # Crouch High Kick
 [StateDef const(StateCrouchHighKick); type: C; moveType: A; physics: C;
 velset: 0,0; ctrl: 0; anim: const(AnimCrouchHighKick);]
@@ -967,7 +1059,6 @@ velset: 0,0; ctrl: 0; anim: const(AnimCrouchHighKick);]
 # Play them attacking. Impactful!
 if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
-	call CharVoice(2,0 + random%2);
 }
 
 # Hitbox for the move.
@@ -1091,7 +1182,6 @@ if const(OpenMK.Char.CrouchAttacks) = 1 || !selfAnimExist(const(AnimCrouchLowPun
 # Play them attacking. Impactful!
 if time = 0 {
 	call ComSound(1,0 + 2*(random%2));
-	call CharVoice(2,0 + random%2);
 }
 
 # Hitbox for the move.
@@ -1150,7 +1240,6 @@ if const(OpenMK.Char.CrouchAttacks) = 1 || !selfAnimExist(const(AnimCrouchLowKic
 # Play them attacking. Impactful!
 if time = 0 {
 	call ComSound(1,0 + 2*(random%2));
-	call CharVoice(2,0 + random%2);
 }
 
 # Hitbox for the move.
@@ -1200,7 +1289,6 @@ ctrl: 0; anim: const(AnimAirKick);]
 # Play them attacking. Impactful!
 if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
-	call CharVoice(2,0 + random%2);
 }
 
 # Hitbox for the move.
@@ -1251,7 +1339,6 @@ if time = 0 && p2Dist x < 0 {
 # Play them attacking. Impactful!
 if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
-	call CharVoice(2,0 + random%2);
 }
 
 # Hitbox for the move.
@@ -1300,7 +1387,6 @@ if time = 0 && p2Dist x < 0 {
 # Play them attacking. Impactful!
 if time = 0 {
 	call ComSound(1,10 + 2*(random%2));
-	call CharVoice(2,0 + random%2);
 }
 
 # Hitbox for the move.
@@ -1362,6 +1448,17 @@ if time = 0 {
 # Don't fall yet!
 if prevStateNo = [const(StateAirKick),const(AnimLeapKick)] && time < 7 {
 	velSet{x: 0; y: 0}
+}
+
+# Can combo now! Yay!
+if const(OpenMK.Char.AirAttackToKombo) = 1 && time > 7 {
+	if p2StateType != A {
+		if command = "x" {
+			selfState{value: const(StateClosePunch)}
+		} else if (command = "c" || command = "z") {
+			selfState{value: const(StateCloseKick)}
+		}
+	}
 }
 
 # ---------------------------------------------
